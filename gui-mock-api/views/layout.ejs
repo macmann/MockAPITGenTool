@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title><%= title || 'GUI Mock API' %></title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  </head>
+  <body>
+    <header class="container">
+      <h1><%= title || 'GUI Mock API' %></h1>
+      <nav>
+        <ul>
+          <li><a href="/admin">Routes</a></li>
+          <li><a href="/admin/new">Create Route</a></li>
+        </ul>
+      </nav>
+    </header>
+    <main class="container">
+      <%- body %>
+    </main>
+    <script src="/public/admin.js" defer></script>
+  </body>
+</html>

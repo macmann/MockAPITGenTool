@@ -1,0 +1,30 @@
+<%
+  const routeData = route || { method: 'GET', path: '/', response: '{}' };
+  const body = `
+    <section>
+      <h2>${title}</h2>
+      ${error ? `<article class="error">${error.message || error}</article>` : ''}
+      <form id="route-form" method="post" action="/api/routes">
+        <input type="hidden" name="id" value="${routeData.id || ''}" />
+        <label>
+          Method
+          <input name="method" required value="${routeData.method}" />
+        </label>
+        <label>
+          Path
+          <input name="path" required value="${routeData.path}" />
+        </label>
+        <label>
+          Description
+          <input name="description" value="${routeData.description || ''}" />
+        </label>
+        <label>
+          Response JSON
+          <textarea name="response" rows="6" required>${routeData.response}</textarea>
+        </label>
+        <button type="submit">Save</button>
+      </form>
+    </section>
+  `;
+%>
+<%- include('layout', { title, body }) %>

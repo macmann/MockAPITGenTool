@@ -1,0 +1,22 @@
+{
+  "name": "gui-mock-api",
+  "version": "1.0.0",
+  "description": "Mock API generator GUI server",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^8.5.2",
+    "express": "^4.19.2",
+    "ejs": "^3.1.9",
+    "handlebars": "^4.7.8",
+    "morgan": "^1.10.0",
+    "helmet": "^7.1.0",
+    "compression": "^1.7.4",
+    "body-parser": "^1.20.2",
+    "nanoid": "^4.0.2",
+    "http-errors": "^2.0.0",
+    "yup": "^1.4.0"
+  }
+}

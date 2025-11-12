@@ -1,0 +1,33 @@
+<%
+  const body = `
+    <section>
+      <h2>Registered Routes</h2>
+      <p>This is a starter administration page that lists routes stored in the SQLite database.</p>
+      <table role="grid">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Method</th>
+            <th>Path</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${routes.length === 0 ? `
+            <tr>
+              <td colspan="4">No routes have been created yet.</td>
+            </tr>
+          ` : routes.map((route) => `
+            <tr>
+              <td>${route.id}</td>
+              <td>${route.method}</td>
+              <td>${route.path}</td>
+              <td>${route.description || ''}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </section>
+  `;
+%>
+<%- include('layout', { title, body }) %>
