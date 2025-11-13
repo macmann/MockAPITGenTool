@@ -231,8 +231,24 @@ app.get('/admin/:id/vars', requireAdmin, (req, res) => {
   const vars = listVars(e.id);
   const pathParams = extractPathParams(e.path);
   const paramGroups = Object.fromEntries(pathParams.map((name) => [name, {}]));
+  const stubPrefix = '__group__.';
+  const stubGroups = {};
 
   for (const row of vars) {
+    if (row.k.startsWith(stubPrefix)) {
+      const stubRemainder = row.k.slice(stubPrefix.length);
+      const [paramName, ...valueParts] = stubRemainder.split('.');
+      if (!paramName || !pathParams.includes(paramName)) continue;
+      const paramValue = valueParts.join('.');
+      if (!paramValue) continue;
+      if (!stubGroups[paramName]) stubGroups[paramName] = new Set();
+      stubGroups[paramName].add(paramValue);
+      if (!paramGroups[paramName][paramValue]) {
+        paramGroups[paramName][paramValue] = {};
+      }
+      continue;
+    }
+
     for (const paramName of pathParams) {
       const prefix = `${paramName}.`;
       if (!row.k.startsWith(prefix)) continue;
@@ -245,6 +261,14 @@ app.get('/admin/:id/vars', requireAdmin, (req, res) => {
         paramGroups[paramName][paramValue] = {};
       }
       paramGroups[paramName][paramValue][fieldName] = row.v;
+    }
+  }
+
+  for (const [paramName, values] of Object.entries(stubGroups)) {
+    for (const value of values) {
+      if (!paramGroups[paramName][value]) {
+        paramGroups[paramName][value] = {};
+      }
     }
   }
 
@@ -283,6 +307,12 @@ app.post('/admin/:id/vars/save', requireAdmin, (req, res) => {
   const fieldNames = req.body.fieldName;
   const fieldValues = req.body.fieldValue;
 
+  const createGroupOnly = String(req.body.createGroup || '').trim();
+
+  if (groupParam && groupValue && createGroupOnly) {
+    entries.push({ k: `__group__.${groupParam}.${groupValue}`, v: '' });
+  }
+
   if (groupParam && groupValue && typeof fieldNames !== 'undefined') {
     const names = Array.isArray(fieldNames) ? fieldNames : [fieldNames];
     const values = Array.isArray(fieldValues) ? fieldValues : [fieldValues];
@@ -292,6 +322,7 @@ app.post('/admin/:id/vars/save', requireAdmin, (req, res) => {
       const value = typeof values[index] !== 'undefined' ? values[index] : '';
       entries.push({ k: `${groupParam}.${groupValue}.${fieldName}`, v: value });
     });
+    entries.push({ k: `__group__.${groupParam}.${groupValue}`, v: '' });
   }
 
   for (const {k, v} of entries) {

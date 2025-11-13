@@ -60,7 +60,8 @@
 
   const varsByKey = Object.fromEntries((vars || []).map((row) => [row.k, row]));
 
-  const varsRows = (vars || []).map((row) => `
+  const varsTableRows = (vars || []).filter((row) => !String(row.k || '').startsWith('__group__.'));
+  const varsRows = varsTableRows.map((row) => `
     <tr>
       <td><code>${escapeHtml(row.k)}</code></td>
       <td>${escapeHtml(row.v)}</td>
@@ -115,10 +116,6 @@
     ? placeholderEntries.join('')
     : `<li class="muted" style="padding: 0.5rem 0;">No placeholders detected yet. Add tokens like <code>{{vars.NAME}}</code> or <code>{{userid.name}}</code> to your response body to unlock guided setup.</li>`;
 
-  const placeholderOptions = responseVars.length
-    ? [`<option value="">Pick a placeholder from the response…</option>`, ...responseVars.map((name) => `<option value="${escapeHtml(name)}">{{vars.${escapeHtml(name)}}}</option>`), '<option value="__custom__">Something else…</option>'].join('')
-    : `<option value="__custom__" selected>Type a variable name</option>`;
-
   const adminKeyHiddenInput = query.key ? `<input type="hidden" name="key" value="${escapeHtml(query.key)}" />` : '';
   const buildQueryString = (params = {}) => {
     const pieces = [];
@@ -131,6 +128,9 @@
     }
     return pieces.length ? `?${pieces.join('&')}` : '';
   };
+
+  const pathParamOptions = pathParamsList.map((paramName) => `<option value="${escapeHtml(paramName)}">:${escapeHtml(paramName)}</option>`).join('');
+  const defaultPathParam = pathParamsList[0] || '';
 
   const paramSections = (pathParams || []).map((paramName) => {
     const groups = Object.entries((paramGroups && paramGroups[paramName]) || {}).sort((a, b) => String(a[0]).localeCompare(String(b[0]), undefined, { numeric: true, sensitivity: 'base' }));
@@ -151,7 +151,11 @@
     const groupItems = groups.length
       ? groups.map(([value, fields]) => {
           const fieldKeys = Object.keys(fields || {});
-          const summary = fieldKeys.length === 1 ? '1 field' : `${fieldKeys.length} fields`;
+          const summary = fieldKeys.length === 0
+            ? 'No values yet'
+            : fieldKeys.length === 1
+              ? '1 value'
+              : `${fieldKeys.length} values`;
           const previewFields = fieldKeys.slice(0, 3).map((field) => `<code>${escapeHtml(field)}</code>`).join(', ');
           const preview = previewFields
             ? `${summary} · ${previewFields}${fieldKeys.length > 3 ? ', …' : ''}`
@@ -175,67 +179,48 @@
 
     const activeFields = isActive ? ((paramGroups && paramGroups[paramName] && paramGroups[paramName][activeValue]) || {}) : {};
     const sortedFieldEntries = Object.entries(activeFields).sort((a, b) => String(a[0]).localeCompare(String(b[0]), undefined, { numeric: true, sensitivity: 'base' }));
-    const fieldRows = sortedFieldEntries.map(([fieldName, fieldValue]) => `
-      <tr>
-        <td style="width: 30%; vertical-align: top;"><code>${escapeHtml(fieldName)}</code></td>
-        <td>
-          <div class="stack" style="gap: 0.5rem;">
-            <form method="post" action="/admin/${encodeURIComponent(e.id)}/vars/save${keyQuery}" class="stack" style="gap: 0.5rem;">
-              ${adminKeyHiddenInput}
-              <input type="hidden" name="groupParam" value="${escapeHtml(paramName)}" />
-              <input type="hidden" name="groupValue" value="${escapeHtml(activeValue)}" />
-              <input type="hidden" name="k" value="${escapeHtml(`${paramName}.${activeValue}.${fieldName}`)}" />
-              <textarea name="v" rows="2" placeholder="Update the value">${escapeHtml(fieldValue)}</textarea>
-              <div class="flex" style="gap: 0.5rem; justify-content: flex-end;">
-                <button type="submit" class="secondary">Save changes</button>
-              </div>
-            </form>
-            <form method="post" action="/admin/${encodeURIComponent(e.id)}/vars/delete${keyQuery}" onsubmit="return confirm('Delete this field?');" style="align-self: flex-end;">
-              ${adminKeyHiddenInput}
-              <input type="hidden" name="groupParam" value="${escapeHtml(paramName)}" />
-              <input type="hidden" name="groupValue" value="${escapeHtml(activeValue)}" />
-              <input type="hidden" name="k" value="${escapeHtml(`${paramName}.${activeValue}.${fieldName}`)}" />
-              <button type="submit" class="contrast">Delete field</button>
-            </form>
-          </div>
-        </td>
-      </tr>
-    `).join('');
+    const placeholderFields = Array.isArray(paramPlaceholderMap[paramName]) ? [...new Set(paramPlaceholderMap[paramName])] : [];
+    const sortedPlaceholderFields = [...placeholderFields].sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' }));
+    const additionalFieldEntries = sortedFieldEntries.filter(([fieldName]) => !sortedPlaceholderFields.includes(fieldName));
 
-    const fieldTable = isActive
-      ? (fieldRows
-          ? `
-            <table>
-              <thead>
-                <tr><th style="width: 30%;">Field</th><th>Value</th></tr>
-              </thead>
-              <tbody>
-                ${fieldRows}
-              </tbody>
-            </table>
-          `
-          : `<p class="muted" style="margin: 0;">No values added yet. Use the form below to capture data for this value.</p>`)
-      : '';
+    const renderFieldEditor = (fieldName, value, options = {}) => {
+      const disabled = options.disabled ? 'disabled' : '';
+      const helper = options.helper || '';
+      return `
+        <div class="stack" style="gap: 0.25rem;">
+          <label class="stack" style="gap: 0.25rem;">
+            <span style="font-weight: 600; display: flex; justify-content: space-between; align-items: baseline;">
+              <span><code>${escapeHtml(fieldName)}</code></span>
+              ${helper}
+            </span>
+            <input type="hidden" name="fieldName" value="${escapeHtml(fieldName)}" />
+            <textarea name="fieldValue" rows="2" ${disabled} placeholder="Enter a value">${escapeHtml(value ?? '')}</textarea>
+          </label>
+        </div>
+      `;
+    };
 
-    const addFieldForm = isActive
+    const placeholderEditors = sortedPlaceholderFields.map((fieldName) => {
+      const existingValue = activeFields[fieldName] || '';
+      return renderFieldEditor(fieldName, existingValue, {
+        helper: `<small class="muted">Appears as <code>{{${escapeHtml(paramName)}.${escapeHtml(fieldName)}}</code></small>`
+      });
+    }).join('');
+
+    const additionalEditors = additionalFieldEntries.map(([fieldName, fieldValue]) => renderFieldEditor(fieldName, fieldValue)).join('');
+
+    const editorFormBody = placeholderEditors || additionalEditors
+      ? `${placeholderEditors}${additionalEditors}`
+      : `<p class="muted" style="margin: 0;">Add placeholders like <code>{{${escapeHtml(paramName)}.name}}</code> to your response to unlock guided fields.</p>`;
+
+    const editorForm = isActive
       ? `
-          <form method="post" action="/admin/${encodeURIComponent(e.id)}/vars/save${keyQuery}" class="stack" style="gap: 0.75rem; border: 1px solid var(--muted-border-color); border-radius: 0.5rem; padding: 1rem; background: var(--surface-color, #fff);">
+          <form method="post" action="/admin/${encodeURIComponent(e.id)}/vars/save${keyQuery}" class="stack" style="gap: 1rem;">
             ${adminKeyHiddenInput}
             <input type="hidden" name="groupParam" value="${escapeHtml(paramName)}" />
             <input type="hidden" name="groupValue" value="${escapeHtml(activeValue)}" />
-            <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
-              <label>
-                Field name
-                <input name="fieldName" placeholder="name" required />
-                <small class="muted">Appears in templates as <code>{{${escapeHtml(paramName)}.FIELD}}</code> when the request value matches <code>${escapeHtml(activeValue)}</code>.</small>
-              </label>
-              <label>
-                Value
-                <textarea name="fieldValue" rows="2" placeholder="Example: Jane Doe"></textarea>
-                <small class="muted">Provide the mock data returned for this field.</small>
-              </label>
-            </div>
-            <button type="submit" class="button primary" style="align-self: flex-start;">Add field</button>
+            ${editorFormBody}
+            ${(placeholderEditors || additionalEditors) ? '<button type="submit" class="button primary" style="align-self: flex-start;">Save values</button>' : ''}
           </form>
         `
       : '';
@@ -254,8 +239,7 @@
               </div>
               ${closeEditorLink}
             </div>
-            ${fieldTable}
-            ${addFieldForm}
+            ${editorForm}
           </div>
         `
       : '';
@@ -291,8 +275,8 @@
   const paramManagementSection = (pathParams && pathParams.length)
     ? `
       <section class="stack" style="gap: 1rem;">
-        <h3 style="margin: 0;">Step 3 · Add data for path parameters</h3>
-        <p class="muted" style="margin: 0;">Your endpoint path includes parameters (${paramIntroList}). Create records for each value (for example <code>001</code>) and attach fields like name, email, or phone. Templates can then use expressions such as ${paramTemplateExamples} when the request matches.</p>
+        <h3 style="margin: 0;">Step 3 · Fill in values for each ID</h3>
+        <p class="muted" style="margin: 0;">We found path parameters (${paramIntroList}). After adding IDs in Step 2, select one below to attach the fields you want to reuse in templates (for example ${paramTemplateExamples}).</p>
         <div class="stack" style="gap: 1.5rem;">
           ${paramSections}
         </div>
@@ -321,30 +305,40 @@
       </section>
 
       <section class="stack" style="gap: 1rem;">
-        <h3 style="margin: 0;">Step 2 · Capture a value</h3>
-        <p class="muted" style="margin: 0;">Work through the placeholders one at a time. Pick a name, add the friendly value, and save it.</p>
-        <form method="post" action="/admin/${encodeURIComponent(e.id)}/vars/save${keyQuery}" class="stack" style="gap: 1rem; border: 1px solid var(--muted-border-color); border-radius: 0.5rem; padding: 1.25rem; background: var(--surface-color, #fff);">
-          <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
-            <label>
-              Choose a variable name
-              <select data-var-picker ${responseVars.length ? '' : 'hidden'}>
-                ${placeholderOptions}
-              </select>
-              ${responseVars.length ? '<small class="muted">We filled this from your response body. Pick one to pre-fill the name.</small>' : '<small class="muted">No placeholders yet? Type a custom name below.</small>'}
-            </label>
-            <label data-custom-wrapper ${responseVars.length ? '' : 'style="display:block;"'}>
-              Variable key
-              <input name="k" placeholder="userId" required data-var-key />
-              <small class="muted">Use plain letters, numbers, or underscores. This becomes <code>{{vars.YOUR_KEY}}</code>.</small>
-            </label>
-            <label>
-              Friendly value
-              <textarea name="v" rows="2" placeholder="Example: John Doe" required></textarea>
-              <small class="muted">This is the content that will replace the placeholder in responses.</small>
-            </label>
-          </div>
-          <button type="submit" class="button primary" style="align-self: flex-start;">Save variable</button>
-        </form>
+        <h3 style="margin: 0;">Step 2 · Add IDs to manage</h3>
+        <p class="muted" style="margin: 0;">Enter the path values you want to support (for example a <code>:userid</code> like <code>001</code>). We’ll list them below so you can fill in their fields.</p>
+        ${(pathParamsList.length)
+          ? `
+            <form method="post" action="/admin/${encodeURIComponent(e.id)}/vars/save${keyQuery}" class="stack" style="gap: 1rem; border: 1px solid var(--muted-border-color); border-radius: 0.5rem; padding: 1.25rem; background: var(--surface-color, #fff);">
+              ${adminKeyHiddenInput}
+              <input type="hidden" name="createGroup" value="1" />
+              <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; align-items: end;">
+                ${(pathParamsList.length > 1)
+                  ? `
+                      <label>
+                        Choose a path parameter
+                        <select name="groupParam" required>
+                          ${pathParamOptions}
+                        </select>
+                        <small class="muted">Pick which parameter this ID belongs to.</small>
+                      </label>
+                    `
+                  : `
+                      <div class="stack" style="gap: 0.25rem;">
+                        <input type="hidden" name="groupParam" value="${escapeHtml(defaultPathParam)}" />
+                        <span class="muted">Parameter: <code>:${escapeHtml(defaultPathParam)}</code></span>
+                      </div>
+                    `}
+                <label>
+                  ID or value
+                  <input name="groupValue" placeholder="001" required />
+                  <small class="muted">We’ll show this in Step 3 so you can attach the detailed fields.</small>
+                </label>
+              </div>
+              <button type="submit" class="button primary" style="align-self: flex-start;">Save ID</button>
+            </form>
+          `
+          : `<p class="muted" style="margin: 0;">This endpoint doesn’t include path parameters yet. Add something like <code>/:userid</code> to the path to unlock ID management.</p>`}
       </section>
 
       ${paramManagementSection}
@@ -367,43 +361,5 @@
 <%- include('layout', {
   title: `Variables · ${e.method} ${e.path}`,
   body,
-  scripts: `
-    <script>
-      (function() {
-        const picker = document.querySelector('[data-var-picker]');
-        const keyInput = document.querySelector('[data-var-key]');
-        const customWrapper = document.querySelector('[data-custom-wrapper]');
-        if (!keyInput) return;
-
-        function syncFromPicker(value) {
-          if (!value || value === '__custom__') {
-            if (customWrapper) {
-              customWrapper.style.display = 'block';
-            }
-            keyInput.removeAttribute('readonly');
-            if (value !== '__custom__') {
-              keyInput.value = '';
-            }
-            keyInput.focus();
-            return;
-          }
-
-          keyInput.value = value;
-          keyInput.setAttribute('readonly', 'readonly');
-          if (customWrapper) {
-            customWrapper.style.display = 'block';
-          }
-        }
-
-        if (picker) {
-          syncFromPicker(picker.value);
-          picker.addEventListener('change', (event) => {
-            syncFromPicker(event.target.value);
-          });
-        } else {
-          syncFromPicker('__custom__');
-        }
-      })();
-    </script>
-  `
+  scripts: ''
 }) %>
