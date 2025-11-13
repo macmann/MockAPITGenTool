@@ -1,0 +1,39 @@
+<% layout('layout', { base: '' }) %>
+<h4>Variables for <code><%= e.method %> <%= e.path %></code></h4>
+<p class="muted">Use these values in responses as <code>{{vars.KEY}}</code></p>
+<p>
+  <a href="/admin/<%= e.id %>?key=<%= encodeURIComponent(query.key||'') %>">Edit</a> ·
+  <a href="/admin/<%= e.id %>/logs?key=<%= encodeURIComponent(query.key||'') %>">Logs</a>
+</p>
+
+<table>
+  <thead><tr><th>Key</th><th>Value</th><th></th></tr></thead>
+  <tbody>
+    <% for (const r of vars) { %>
+    <tr>
+      <td><code><%= r.k %></code></td>
+      <td><%= r.v %></td>
+      <td class="right">
+        <form method="post" action="/admin/<%= e.id %>/vars/delete?key=<%= encodeURIComponent(query.key||'') %>" style="display:inline">
+          <input type="hidden" name="k" value="<%= r.k %>"/>
+          <button class="button button-outline" onclick="return confirm('Delete variable?')">Delete</button>
+        </form>
+      </td>
+    </tr>
+    <% } %>
+  </tbody>
+</table>
+
+<h5>Add / Update Variable</h5>
+<form method="post" action="/admin/<%= e.id %>/vars/save?key=<%= encodeURIComponent(query.key||'') %>">
+  <div class="row">
+    <label>Key
+      <input name="k" placeholder="price" />
+    </label>
+    <label>Value
+      <input name="v" placeholder="199.00" />
+    </label>
+  </div>
+  <button class="button">Save</button>
+</form>
+
