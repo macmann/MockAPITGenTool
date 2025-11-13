@@ -13,12 +13,62 @@
   const varsLink = currentEndpoint.id ? `/admin/${encodeURIComponent(currentEndpoint.id)}/vars${keyQuery}` : '';
   const logsLink = currentEndpoint.id ? `/admin/${encodeURIComponent(currentEndpoint.id)}/logs${keyQuery}` : '';
 
+  const methodChoices = [
+    { value: 'GET', label: 'GET — Retrieve data' },
+    { value: 'POST', label: 'POST — Create something' },
+    { value: 'PUT', label: 'PUT — Replace existing data' },
+    { value: 'PATCH', label: 'PATCH — Update part of the data' },
+    { value: 'DELETE', label: 'DELETE — Remove data' },
+    { value: 'OPTIONS', label: 'OPTIONS — Return supported methods' },
+    { value: 'HEAD', label: 'HEAD — Retrieve headers only' }
+  ];
+  const currentMethod = String(currentEndpoint.method || 'GET').toUpperCase();
+  let methodOptions = methodChoices
+    .map(({ value, label }) => `<option value="${value}" ${value === currentMethod ? 'selected' : ''}>${label}</option>`)
+    .join('');
+  if (!methodChoices.some(choice => choice.value === currentMethod)) {
+    methodOptions += `<option value="${escapeHtml(currentMethod)}" selected>Current (${escapeHtml(currentMethod)})</option>`;
+  }
+
+  const statusChoices = [
+    { value: '200', label: '200 – OK (success)' },
+    { value: '201', label: '201 – Created' },
+    { value: '202', label: '202 – Accepted' },
+    { value: '204', label: '204 – No content' },
+    { value: '400', label: '400 – Bad request' },
+    { value: '401', label: '401 – Unauthorized' },
+    { value: '403', label: '403 – Forbidden' },
+    { value: '404', label: '404 – Not found' },
+    { value: '409', label: '409 – Conflict' },
+    { value: '422', label: '422 – Validation error' },
+    { value: '500', label: '500 – Server error' }
+  ];
+  const currentStatus = String(currentEndpoint.response_status ?? 200);
+  const hasPresetStatus = statusChoices.some(choice => choice.value === currentStatus);
+  const statusOptions = `${statusChoices
+    .map(({ value, label }) => `<option value="${value}" ${value === currentStatus ? 'selected' : ''}>${label}</option>`)
+    .join('')}<option value="custom" ${hasPresetStatus ? '' : 'selected'}>Custom status…</option>`;
+  const customStatusValue = hasPresetStatus ? '' : escapeHtml(currentStatus);
+
+  const responseTemplateOptions = [
+    { value: '', label: 'Choose a quick response (optional)' },
+    { value: 'success', label: '✅ 200 · Success message' },
+    { value: 'created', label: '✅ 201 · Created confirmation' },
+    { value: 'empty', label: 'ℹ️ 204 · Empty response' },
+    { value: 'not_found', label: '🚫 404 · Not found message' },
+    { value: 'conflict', label: '⚠️ 409 · Conflict explanation' },
+    { value: 'error', label: '❌ 500 · Something went wrong' }
+  ];
+  const responseTemplateSelectOptions = responseTemplateOptions
+    .map(({ value, label }, idx) => `<option value="${value}" ${idx === 0 ? 'selected' : ''}>${label}</option>`)
+    .join('');
+
   const body = `
-    <section>
+    <section class="stack" style="display: flex; flex-direction: column; gap: 2rem;">
       <header class="flex" style="justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
         <div>
           <h2 style="margin-bottom: 0.25rem;">${escapeHtml(title || 'Endpoint')}</h2>
-          <p class="muted" style="margin: 0;">Define how this endpoint should respond to incoming requests.</p>
+          <p class="muted" style="margin: 0;">Follow the guided steps to describe your endpoint—no code snippets required.</p>
         </div>
         <div class="flex" style="gap: 0.5rem;">
           <a class="secondary" href="/admin${keyQuery}">Back to list</a>
@@ -26,66 +76,115 @@
           ${currentEndpoint.id ? `<a class="secondary" href="${logsLink}">Logs</a>` : ''}
         </div>
       </header>
-      <form method="post" action="${formAction}" class="grid" style="gap: 1rem;">
+      <form method="post" action="${formAction}" style="display: flex; flex-direction: column; gap: 2rem;">
         <input type="hidden" name="id" value="${escapeHtml(currentEndpoint.id || '')}" />
-        <label>
-          Name
-          <input name="name" placeholder="Catalog Lookup" value="${escapeHtml(currentEndpoint.name || '')}" />
-        </label>
-        <label>
-          Description
-          <input name="description" placeholder="Optional notes" value="${escapeHtml(currentEndpoint.description || '')}" />
-        </label>
-        <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
-          <label>
-            Method
-            <input name="method" required value="${escapeHtml(currentEndpoint.method || 'GET')}" />
-          </label>
-          <label>
-            Path
-            <input name="path" required value="${escapeHtml(currentEndpoint.path || '/')}" />
-          </label>
-          <label>
-            Status Code
-            <input type="number" name="response_status" value="${escapeHtml(currentEndpoint.response_status ?? 200)}" />
-          </label>
-          <label>
-            Delay (ms)
-            <input type="number" min="0" name="response_delay_ms" value="${escapeHtml(currentEndpoint.response_delay_ms ?? 0)}" />
-          </label>
-        </div>
+
         <fieldset>
-          <legend>Response Options</legend>
+          <legend>Step 1 · Give it a friendly name</legend>
+          <p class="muted">Add notes that make sense to your team. These are for you and do not affect the API.</p>
+          <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+            <label>
+              Name
+              <input name="name" placeholder="Catalog lookup" value="${escapeHtml(currentEndpoint.name || '')}" />
+            </label>
+            <label>
+              Description
+              <input name="description" placeholder="Optional notes" value="${escapeHtml(currentEndpoint.description || '')}" />
+            </label>
+          </div>
           <label class="checkbox">
             <input type="checkbox" name="enabled" value="true" ${currentEndpoint.enabled !== false ? 'checked' : ''} />
-            Enable endpoint
-          </label>
-          <label class="checkbox">
-            <input type="checkbox" name="response_is_json" value="true" ${currentEndpoint.response_is_json ? 'checked' : ''} />
-            Treat body as JSON
-          </label>
-          <label class="checkbox">
-            <input type="checkbox" name="template_enabled" value="true" ${currentEndpoint.template_enabled ? 'checked' : ''} />
-            Render body with Handlebars templates
+            <span>Make this endpoint live right away</span>
           </label>
         </fieldset>
-        <label>
-          Match Headers (JSON)
-          <textarea data-json-field name="match_headers" rows="3" placeholder='{"x-api-version":"1"}'>${escapeHtml(currentEndpoint.match_headers || '{}')}</textarea>
-        </label>
-        <label>
-          Response Headers (JSON)
-          <textarea data-json-field name="response_headers" rows="3" placeholder='{"Content-Type":"application/json"}'>${escapeHtml(currentEndpoint.response_headers || '{}')}</textarea>
-        </label>
-        <label>
-          Response Body
-          <textarea name="response_body" rows="10" placeholder='{"message":"ok"}'>${escapeHtml(currentEndpoint.response_body || '')}</textarea>
-        </label>
-        <button type="submit" class="button primary">Save Endpoint</button>
+
+        <fieldset>
+          <legend>Step 2 · Choose how clients will call it</legend>
+          <p class="muted">Select the HTTP method and URL path the mock API should listen to.</p>
+          <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+            <label>
+              Method
+              <select name="method" required>
+                ${methodOptions}
+              </select>
+            </label>
+            <label>
+              Path
+              <input name="path" required value="${escapeHtml(currentEndpoint.path || '/')}" placeholder="/catalog/items" />
+              <small class="muted">Paths should start with a forward slash.</small>
+            </label>
+            <label>
+              Delay (ms)
+              <input type="number" min="0" name="response_delay_ms" value="${escapeHtml(currentEndpoint.response_delay_ms ?? 0)}" />
+              <small class="muted">Optional wait time before the response is sent.</small>
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Step 3 · Decide on the response</legend>
+          <p class="muted">Pick a quick template or describe the message you want clients to see.</p>
+          <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; align-items: end;">
+            <label>
+              Quick start templates
+              <select data-response-template>
+                ${responseTemplateSelectOptions}
+              </select>
+              <small class="muted">We’ll fill in the response for you. Existing text stays unless you confirm a change.</small>
+            </label>
+            <label>
+              Status code
+              <input type="hidden" data-status-value name="response_status" value="${escapeHtml(currentStatus)}" />
+              <select data-status-select>
+                ${statusOptions}
+              </select>
+            </label>
+          </div>
+          <div data-status-custom style="${hasPresetStatus ? 'display: none;' : ''}">
+            <label>
+              Custom status code
+              <input type="number" min="100" max="599" value="${customStatusValue}" data-status-custom-input />
+              <small class="muted">Use this if you need a status outside the common list.</small>
+            </label>
+          </div>
+          <label>
+            Response body
+            <textarea name="response_body" rows="8" placeholder='Tell the client what happened' data-response-body>${escapeHtml(currentEndpoint.response_body || '')}</textarea>
+            <small class="muted">Write the message you’d like the API to return. Templates can populate this automatically.</small>
+          </label>
+          <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+            <label class="checkbox">
+              <input type="checkbox" name="response_is_json" value="true" ${currentEndpoint.response_is_json ? 'checked' : ''} data-response-json />
+              <span>Format response as JSON<br><small class="muted">We’ll validate the JSON for you before saving.</small></span>
+            </label>
+            <label class="checkbox">
+              <input type="checkbox" name="template_enabled" value="true" ${currentEndpoint.template_enabled ? 'checked' : ''} />
+              <span>Use Handlebars placeholders<br><small class="muted">Great when you want to insert dynamic values from Vars.</small></span>
+            </label>
+          </div>
+        </fieldset>
+
+        <details>
+          <summary>Advanced settings (optional)</summary>
+          <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin-top: 1rem;">
+            <label>
+              Require specific headers
+              <textarea data-json-field name="match_headers" rows="3" placeholder='{"x-api-version":"1"}'>${escapeHtml(currentEndpoint.match_headers || '{}')}</textarea>
+              <small class="muted">Only match requests that include these header names and values.</small>
+            </label>
+            <label>
+              Extra response headers
+              <textarea data-json-field data-response-headers name="response_headers" rows="3" placeholder='{"Content-Type":"application/json"}'>${escapeHtml(currentEndpoint.response_headers || '{}')}</textarea>
+              <small class="muted">We’ll add <code>Content-Type</code> automatically when JSON is selected.</small>
+            </label>
+          </div>
+        </details>
+
+        <button type="submit" class="button primary">Save endpoint</button>
       </form>
       ${currentEndpoint.id ? `
-        <form method="post" action="${deleteAction}" onsubmit="return confirm('Delete this endpoint?');" style="margin-top: 1rem;">
-          <button class="contrast" type="submit">Delete Endpoint</button>
+        <form method="post" action="${deleteAction}" onsubmit="return confirm('Delete this endpoint?');" style="margin-top: -1rem;">
+          <button class="contrast" type="submit">Delete endpoint</button>
         </form>
       ` : ''}
     </section>
