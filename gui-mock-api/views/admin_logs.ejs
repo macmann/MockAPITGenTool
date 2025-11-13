@@ -1,0 +1,25 @@
+<% layout('layout', { base: '' }) %>
+<h4>Logs for <code><%= e.method %> <%= e.path %></code></h4>
+<p>
+  <a href="/admin/<%= e.id %>?key=<%= encodeURIComponent(query.key||'') %>">Edit</a> ·
+  <a href="/admin/<%= e.id %>/vars?key=<%= encodeURIComponent(query.key||'') %>">Vars</a>
+</p>
+<table>
+  <thead>
+    <tr><th>When</th><th>Status</th><th>ms</th><th>Method</th><th>Path</th><th></th></tr>
+  </thead>
+  <tbody>
+    <% for (const L of logs) { %>
+      <tr>
+        <td><%= L.created_at %></td>
+        <td><%= L.status %></td>
+        <td><%= L.response_ms %></td>
+        <td><%= L.method %></td>
+        <td><code><%= L.path %></code></td>
+        <td class="right">
+          <a class="button button-outline" href="/admin/logs/<%= L.id %>?key=<%= encodeURIComponent(query.key||'') %>">View</a>
+        </td>
+      </tr>
+    <% } %>
+  </tbody>
+</table>

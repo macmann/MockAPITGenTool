@@ -1,0 +1,14 @@
+<% layout('layout', { base: '' }) %>
+<h4>Log <code><%= log.id %></code></h4>
+<p class="muted"><strong>When:</strong> <%= log.created_at %> · <strong>Status:</strong> <%= log.status %> · <strong>ms:</strong> <%= log.response_ms %></p>
+<details open><summary><strong>Request</strong></summary>
+  <pre class="code"><%= log.method %> <%= log.path %></pre>
+  <h5>Params</h5>
+  <pre class="code"><%- JSON.stringify(JSON.parse(log.matched_params||'{}'), null, 2) %></pre>
+  <h5>Query</h5>
+  <pre class="code"><%- JSON.stringify(JSON.parse(log.query||'{}'), null, 2) %></pre>
+  <h5>Headers</h5>
+  <pre class="code"><%- JSON.stringify(JSON.parse(log.headers||'{}'), null, 2) %></pre>
+  <h5>Body</h5>
+  <pre class="code"><%- JSON.stringify(JSON.parse(log.body||'{}'), null, 2) %></pre>
+</details>
