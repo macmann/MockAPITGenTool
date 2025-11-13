@@ -54,6 +54,189 @@
     ? [`<option value="">Pick a placeholder from the response…</option>`, ...responseVars.map((name) => `<option value="${escapeHtml(name)}">{{vars.${escapeHtml(name)}}}</option>`), '<option value="__custom__">Something else…</option>'].join('')
     : `<option value="__custom__" selected>Type a variable name</option>`;
 
+  const adminKeyHiddenInput = query.key ? `<input type="hidden" name="key" value="${escapeHtml(query.key)}" />` : '';
+  const buildQueryString = (params = {}) => {
+    const pieces = [];
+    if (query.key) {
+      pieces.push(`key=${encodeURIComponent(query.key)}`);
+    }
+    for (const [name, value] of Object.entries(params)) {
+      if (value === undefined || value === null || value === '') continue;
+      pieces.push(`${encodeURIComponent(name)}=${encodeURIComponent(value)}`);
+    }
+    return pieces.length ? `?${pieces.join('&')}` : '';
+  };
+
+  const paramSections = (pathParams || []).map((paramName) => {
+    const groups = Object.entries((paramGroups && paramGroups[paramName]) || {}).sort((a, b) => String(a[0]).localeCompare(String(b[0]), undefined, { numeric: true, sensitivity: 'base' }));
+    const isActive = activeParam === paramName && activeValue;
+    const hasActiveGroup = Boolean(paramGroups && paramGroups[paramName] && paramGroups[paramName][activeValue]);
+
+    const newGroupNotice = isActive && !hasActiveGroup && activeValue
+      ? `
+          <li style="padding: 0.75rem 0; border-bottom: 1px solid var(--muted-border-color);">
+            <div>
+              <code>${escapeHtml(`${paramName}.${activeValue}`)}</code>
+              <p class="muted" style="margin: 0.25rem 0 0;">New value selected. Add fields using the editor below.</p>
+            </div>
+          </li>
+        `
+      : '';
+
+    const groupItems = groups.length
+      ? groups.map(([value, fields]) => {
+          const fieldKeys = Object.keys(fields || {});
+          const summary = fieldKeys.length === 1 ? '1 field' : `${fieldKeys.length} fields`;
+          const previewFields = fieldKeys.slice(0, 3).map((field) => `<code>${escapeHtml(field)}</code>`).join(', ');
+          const preview = previewFields
+            ? `${summary} · ${previewFields}${fieldKeys.length > 3 ? ', …' : ''}`
+            : summary;
+          const linkQuery = buildQueryString({ groupParam: paramName, groupValue: value });
+          return `
+            <li style="padding: 0.75rem 0; display: flex; justify-content: space-between; gap: 1rem; align-items: center; border-bottom: 1px solid var(--muted-border-color);">
+              <div>
+                <code>${escapeHtml(`${paramName}.${value}`)}</code>
+                <p class="muted" style="margin: 0.25rem 0 0;">${preview}</p>
+              </div>
+              <a class="secondary" href="/admin/${encodeURIComponent(e.id)}/vars${linkQuery}">Edit values</a>
+            </li>
+          `;
+        }).join('')
+      : '';
+
+    const groupListFallback = !groupItems && !newGroupNotice
+      ? `<li class="muted" style="padding: 0.75rem 0;">No saved values yet. Start by entering a value below.</li>`
+      : '';
+
+    const activeFields = isActive ? ((paramGroups && paramGroups[paramName] && paramGroups[paramName][activeValue]) || {}) : {};
+    const sortedFieldEntries = Object.entries(activeFields).sort((a, b) => String(a[0]).localeCompare(String(b[0]), undefined, { numeric: true, sensitivity: 'base' }));
+    const fieldRows = sortedFieldEntries.map(([fieldName, fieldValue]) => `
+      <tr>
+        <td style="width: 30%; vertical-align: top;"><code>${escapeHtml(fieldName)}</code></td>
+        <td>
+          <div class="stack" style="gap: 0.5rem;">
+            <form method="post" action="/admin/${encodeURIComponent(e.id)}/vars/save${keyQuery}" class="stack" style="gap: 0.5rem;">
+              ${adminKeyHiddenInput}
+              <input type="hidden" name="groupParam" value="${escapeHtml(paramName)}" />
+              <input type="hidden" name="groupValue" value="${escapeHtml(activeValue)}" />
+              <input type="hidden" name="k" value="${escapeHtml(`${paramName}.${activeValue}.${fieldName}`)}" />
+              <textarea name="v" rows="2" placeholder="Update the value">${escapeHtml(fieldValue)}</textarea>
+              <div class="flex" style="gap: 0.5rem; justify-content: flex-end;">
+                <button type="submit" class="secondary">Save changes</button>
+              </div>
+            </form>
+            <form method="post" action="/admin/${encodeURIComponent(e.id)}/vars/delete${keyQuery}" onsubmit="return confirm('Delete this field?');" style="align-self: flex-end;">
+              ${adminKeyHiddenInput}
+              <input type="hidden" name="groupParam" value="${escapeHtml(paramName)}" />
+              <input type="hidden" name="groupValue" value="${escapeHtml(activeValue)}" />
+              <input type="hidden" name="k" value="${escapeHtml(`${paramName}.${activeValue}.${fieldName}`)}" />
+              <button type="submit" class="contrast">Delete field</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+
+    const fieldTable = isActive
+      ? (fieldRows
+          ? `
+            <table>
+              <thead>
+                <tr><th style="width: 30%;">Field</th><th>Value</th></tr>
+              </thead>
+              <tbody>
+                ${fieldRows}
+              </tbody>
+            </table>
+          `
+          : `<p class="muted" style="margin: 0;">No values added yet. Use the form below to capture data for this value.</p>`)
+      : '';
+
+    const addFieldForm = isActive
+      ? `
+          <form method="post" action="/admin/${encodeURIComponent(e.id)}/vars/save${keyQuery}" class="stack" style="gap: 0.75rem; border: 1px solid var(--muted-border-color); border-radius: 0.5rem; padding: 1rem; background: var(--surface-color, #fff);">
+            ${adminKeyHiddenInput}
+            <input type="hidden" name="groupParam" value="${escapeHtml(paramName)}" />
+            <input type="hidden" name="groupValue" value="${escapeHtml(activeValue)}" />
+            <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+              <label>
+                Field name
+                <input name="fieldName" placeholder="name" required />
+                <small class="muted">Appears in templates as <code>{{${escapeHtml(paramName)}.FIELD}}</code> when the request value matches <code>${escapeHtml(activeValue)}</code>.</small>
+              </label>
+              <label>
+                Value
+                <textarea name="fieldValue" rows="2" placeholder="Example: Jane Doe"></textarea>
+                <small class="muted">Provide the mock data returned for this field.</small>
+              </label>
+            </div>
+            <button type="submit" class="button primary" style="align-self: flex-start;">Add field</button>
+          </form>
+        `
+      : '';
+
+    const closeEditorLink = isActive
+      ? `<a class="secondary" href="/admin/${encodeURIComponent(e.id)}/vars${buildQueryString({})}">Close editor</a>`
+      : '';
+
+    const editorSection = isActive
+      ? `
+          <div class="stack" style="gap: 1rem; border: 1px solid var(--muted-border-color); border-radius: 0.5rem; padding: 1.25rem; background: var(--surface-color, #fff);">
+            <div class="flex" style="justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
+              <div class="stack" style="gap: 0.25rem;">
+                <h4 style="margin: 0;">Editing <code>${escapeHtml(paramName)}.${escapeHtml(activeValue)}</code></h4>
+                <p class="muted" style="margin: 0;">When a request includes <code>${escapeHtml(paramName)}=${escapeHtml(activeValue)}</code>, templates can reference <code>{{${escapeHtml(paramName)}.FIELD}}</code>.</p>
+              </div>
+              ${closeEditorLink}
+            </div>
+            ${fieldTable}
+            ${addFieldForm}
+          </div>
+        `
+      : '';
+
+    return `
+      <section class="stack" style="gap: 1rem;">
+        <header class="stack" style="gap: 0.25rem;">
+          <h4 style="margin: 0;">Parameter <code>:${escapeHtml(paramName)}</code></h4>
+          <p class="muted" style="margin: 0;">Group values for the <code>${escapeHtml(paramName)}</code> path parameter and attach fields you can reuse in templates.</p>
+        </header>
+        <form method="get" action="/admin/${encodeURIComponent(e.id)}/vars" class="grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; align-items: end;">
+          ${query.key ? `<input type="hidden" name="key" value="${escapeHtml(query.key)}" />` : ''}
+          <input type="hidden" name="groupParam" value="${escapeHtml(paramName)}" />
+          <label>
+            ${`Add a new ${escapeHtml(paramName)} value`}
+            <input name="groupValue" placeholder="001" required />
+          </label>
+          <button type="submit" class="button secondary" style="height: 100%;">Start editing</button>
+        </form>
+        <ul style="list-style: none; padding: 0; margin: 0; border: 1px solid var(--muted-border-color); border-radius: 0.5rem; padding: 0 1rem; background: var(--muted-border-color, #f4f6f8);">
+          ${newGroupNotice}
+          ${groupItems}
+          ${groupListFallback}
+        </ul>
+        ${editorSection}
+      </section>
+    `;
+  }).join('');
+
+  const paramIntroList = (pathParams || []).map((p) => `<code>:${escapeHtml(p)}</code>`).join(', ');
+  const paramTemplateExamples = (pathParams || []).map((p) => `<code>{{${escapeHtml(p)}.FIELD}}</code>`).join(' or ') || '<code>{{param.FIELD}}</code>';
+
+  const paramManagementSection = (pathParams && pathParams.length)
+    ? `
+      <section class="stack" style="gap: 1rem;">
+        <h3 style="margin: 0;">Step 3 · Add data for path parameters</h3>
+        <p class="muted" style="margin: 0;">Your endpoint path includes parameters (${paramIntroList}). Create records for each value (for example <code>001</code>) and attach fields like name, email, or phone. Templates can then use expressions such as ${paramTemplateExamples} when the request matches.</p>
+        <div class="stack" style="gap: 1.5rem;">
+          ${paramSections}
+        </div>
+      </section>
+    `
+    : '';
+
+  const reviewStepNumber = (pathParams && pathParams.length) ? 4 : 3;
+
   const body = `
     <section class="stack" style="display: flex; flex-direction: column; gap: 2rem;">
       <header class="flex" style="justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
@@ -99,8 +282,10 @@
         </form>
       </section>
 
+      ${paramManagementSection}
+
       <section class="stack" style="gap: 1rem;">
-        <h3 style="margin: 0;">Step 3 · Review saved variables</h3>
+        <h3 style="margin: 0;">Step ${reviewStepNumber} · Review saved variables</h3>
         <p class="muted" style="margin: 0;">Update or remove any values below. Each key maps directly to a placeholder in your responses.</p>
         <table>
           <thead>

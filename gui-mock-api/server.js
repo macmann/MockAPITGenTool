@@ -83,9 +83,15 @@ function endpointDefaults() {
   };
 }
 
-function persistAdminKey(req) {
-  const key = req.query.key || req.body?.key;
+function persistAdminKey(req, res) {
+  const key = req.query.key || req.body?.key || res?.locals?.adminKey;
   return key ? `?key=${encodeURIComponent(key)}` : '';
+}
+
+function extractPathParams(pathPattern) {
+  if (typeof pathPattern !== 'string') return [];
+  const matches = pathPattern.match(/:[A-Za-z0-9_]+/g) || [];
+  return matches.map((token) => token.slice(1));
 }
 
 app.get('/', (req, res) => {
@@ -188,7 +194,7 @@ app.get('/admin/:id/edit', requireAdmin, (req, res) => {
 });
 
 app.post('/admin/save', requireAdmin, (req, res) => {
-  const keyQuery = persistAdminKey(req);
+  const keyQuery = persistAdminKey(req, res);
   const payload = {
     id: req.body.id || nanoid(12),
     name: (req.body.name || '').trim(),
@@ -214,7 +220,7 @@ app.post('/admin/:id/delete', requireAdmin, (req, res) => {
   if (endpoint) {
     deleteEndpoint(endpoint.id);
   }
-  const keyQuery = persistAdminKey(req);
+  const keyQuery = persistAdminKey(req, res);
   res.redirect(`/admin${keyQuery}`);
 });
 
@@ -223,20 +229,86 @@ app.get('/admin/:id/vars', requireAdmin, (req, res) => {
   const e = getEndpoint(req.params.id);
   if (!e) return res.status(404).send('Not found');
   const vars = listVars(e.id);
-  res.render('admin_vars', { e, vars, query: req.query });
+  const pathParams = extractPathParams(e.path);
+  const paramGroups = Object.fromEntries(pathParams.map((name) => [name, {}]));
+
+  for (const row of vars) {
+    for (const paramName of pathParams) {
+      const prefix = `${paramName}.`;
+      if (!row.k.startsWith(prefix)) continue;
+      const remainder = row.k.slice(prefix.length);
+      const [paramValue, ...fieldParts] = remainder.split('.');
+      if (!paramValue || fieldParts.length === 0) continue;
+      const fieldName = fieldParts.join('.');
+      if (!fieldName) continue;
+      if (!paramGroups[paramName][paramValue]) {
+        paramGroups[paramName][paramValue] = {};
+      }
+      paramGroups[paramName][paramValue][fieldName] = row.v;
+    }
+  }
+
+  const rawParam = String(req.query.groupParam || '');
+  const activeParam = pathParams.includes(rawParam) ? rawParam : '';
+  const activeValue = activeParam ? String(req.query.groupValue || '') : '';
+
+  res.render('admin_vars', {
+    e,
+    vars,
+    query: req.query,
+    pathParams,
+    paramGroups,
+    activeParam,
+    activeValue
+  });
 });
 
 app.post('/admin/:id/vars/save', requireAdmin, (req, res) => {
   const e = getEndpoint(req.params.id);
   if (!e) return res.status(404).send('Not found');
-  const entries = Array.isArray(req.body.k)
-    ? req.body.k.map((k, i) => ({ k, v: req.body.v[i] }))
-    : [{ k: req.body.k, v: req.body.v }];
+  const entries = [];
+
+  if (Array.isArray(req.body.k)) {
+    const values = Array.isArray(req.body.v) ? req.body.v : [];
+    req.body.k.forEach((k, i) => {
+      if (!k) return;
+      entries.push({ k, v: values[i] });
+    });
+  } else if (typeof req.body.k !== 'undefined') {
+    entries.push({ k: req.body.k, v: req.body.v });
+  }
+
+  const groupParam = String(req.body.groupParam || '').trim();
+  const groupValue = String(req.body.groupValue || '').trim();
+  const fieldNames = req.body.fieldName;
+  const fieldValues = req.body.fieldValue;
+
+  if (groupParam && groupValue && typeof fieldNames !== 'undefined') {
+    const names = Array.isArray(fieldNames) ? fieldNames : [fieldNames];
+    const values = Array.isArray(fieldValues) ? fieldValues : [fieldValues];
+    names.forEach((rawName, index) => {
+      const fieldName = String(rawName || '').trim();
+      if (!fieldName) return;
+      const value = typeof values[index] !== 'undefined' ? values[index] : '';
+      entries.push({ k: `${groupParam}.${groupValue}.${fieldName}`, v: value });
+    });
+  }
+
   for (const {k, v} of entries) {
     if (!k) continue;
     upsertVar({ id: nanoid(12), endpoint_id: e.id, k: String(k), v: String(v ?? '') });
   }
-  res.redirect(`/admin/${e.id}/vars?key=${encodeURIComponent(req.query.key || '')}`);
+
+  const params = new URLSearchParams();
+  const adminKey = res.locals.adminKey || req.query.key || req.body?.key;
+  if (adminKey) params.set('key', adminKey);
+  if (groupParam && groupValue) {
+    params.set('groupParam', groupParam);
+    params.set('groupValue', groupValue);
+  }
+
+  const search = params.toString();
+  res.redirect(`/admin/${e.id}/vars${search ? `?${search}` : ''}`);
 });
 
 app.post('/admin/:id/vars/delete', requireAdmin, (req, res) => {
@@ -244,7 +316,17 @@ app.post('/admin/:id/vars/delete', requireAdmin, (req, res) => {
   if (!e) return res.status(404).send('Not found');
   const k = String(req.body.k || '');
   if (k) deleteVar(e.id, k);
-  res.redirect(`/admin/${e.id}/vars?key=${encodeURIComponent(req.query.key || '')}`);
+  const params = new URLSearchParams();
+  const adminKey = res.locals.adminKey || req.query.key || req.body?.key;
+  if (adminKey) params.set('key', adminKey);
+  const groupParam = String(req.body.groupParam || '').trim();
+  const groupValue = String(req.body.groupValue || '').trim();
+  if (groupParam && groupValue) {
+    params.set('groupParam', groupParam);
+    params.set('groupValue', groupValue);
+  }
+  const search = params.toString();
+  res.redirect(`/admin/${e.id}/vars${search ? `?${search}` : ''}`);
 });
 
 // Logs
