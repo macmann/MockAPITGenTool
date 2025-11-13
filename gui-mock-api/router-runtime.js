@@ -39,12 +39,32 @@ export function buildRuntimeRouter() {
     const varRows = listVars(match.id);
     const vars = Object.fromEntries(varRows.map(r => [r.k, r.v]));
 
+    // Param-based multi-response vars:
+    // For any route param (e.g. :userid), vars with keys like
+    // "userid.101.name" will be mapped into ctx.userid = { name: "..." }
+    // when the current request has params.userid === "101".
+    // This lets templates use {{userid.name}}, {{userid.age}}, etc.
+    const derivedFromParams = {};
+    if (req.matchedParams && vars) {
+      for (const [paramName, paramValue] of Object.entries(req.matchedParams)) {
+        const prefix = `${paramName}.${paramValue}.`;
+        for (const [key, value] of Object.entries(vars)) {
+          if (key.startsWith(prefix)) {
+            const field = key.slice(prefix.length);
+            if (!derivedFromParams[paramName]) derivedFromParams[paramName] = {};
+            derivedFromParams[paramName][field] = value;
+          }
+        }
+      }
+    }
+
     const ctx = {
       params: req.matchedParams || {},
       query: req.query || {},
       headers: req.headers || {},
       body: req.body || {},
       vars,
+      ...derivedFromParams,
       now: new Date().toISOString()
     };
 
