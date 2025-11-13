@@ -7,6 +7,21 @@
     .replace(/'/g, '&#39;');
 
   const keyQuery = query.key ? `?key=${encodeURIComponent(query.key)}` : '';
+  const formatBodyPreview = (raw) => {
+    if (!raw) return '<span class="muted">—</span>';
+    try {
+      const parsed = JSON.parse(raw);
+      const stringified = JSON.stringify(parsed);
+      const truncated = stringified.length > 120
+        ? `${stringified.slice(0, 117)}...`
+        : stringified;
+      return `<code>${escapeHtml(truncated)}</code>`;
+    } catch (err) {
+      const trimmed = raw.length > 120 ? `${raw.slice(0, 117)}...` : raw;
+      return `<code>${escapeHtml(trimmed)}</code>`;
+    }
+  };
+
   const rows = (logs || []).map((log) => `
     <tr>
       <td>${escapeHtml(log.created_at)}</td>
@@ -14,6 +29,7 @@
       <td>${escapeHtml(log.response_ms)}</td>
       <td>${escapeHtml(log.method)}</td>
       <td><code>${escapeHtml(log.path)}</code></td>
+      <td>${formatBodyPreview(log.body)}</td>
       <td class="right"><a class="secondary" href="/admin/logs/${encodeURIComponent(log.id)}${keyQuery}">View</a></td>
     </tr>
   `).join('');
@@ -29,10 +45,10 @@
       </header>
       <table>
         <thead>
-          <tr><th>When</th><th>Status</th><th>ms</th><th>Method</th><th>Path</th><th></th></tr>
+          <tr><th>When</th><th>Status</th><th>ms</th><th>Method</th><th>Path</th><th>Request body</th><th></th></tr>
         </thead>
         <tbody>
-          ${rows || `<tr><td colspan="6" class="muted">No logs captured yet.</td></tr>`}
+          ${rows || `<tr><td colspan="7" class="muted">No logs captured yet.</td></tr>`}
         </tbody>
       </table>
     </section>
