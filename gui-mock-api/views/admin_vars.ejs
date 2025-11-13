@@ -8,13 +8,53 @@
 
   const keyQuery = query.key ? `?key=${encodeURIComponent(query.key)}` : '';
   const responseBody = String(e.response_body || '');
-  const placeholderRegex = /{{\s*vars\.([a-zA-Z0-9_\.\-]+)\s*}}/g;
+  const pathParamsList = Array.isArray(pathParams) ? pathParams : [];
+  const placeholderRegex = /{{\s*([A-Za-z0-9_]+(?:\.[A-Za-z0-9_\.\-]+)?)\s*}}/g;
   const responseVars = [];
+  const paramPlaceholderMap = {};
   let match;
   while ((match = placeholderRegex.exec(responseBody)) !== null) {
-    const name = match[1];
-    if (name && !responseVars.includes(name)) {
-      responseVars.push(name);
+    const token = match[1];
+    if (!token) continue;
+
+    if (token.startsWith('vars.')) {
+      const name = token.slice(5);
+      if (name && !responseVars.includes(name)) {
+        responseVars.push(name);
+      }
+      continue;
+    }
+
+    const [root, ...restParts] = token.split('.');
+    if (!root || restParts.length === 0) {
+      continue;
+    }
+
+    if (!pathParamsList.includes(root)) {
+      continue;
+    }
+
+    const fieldName = restParts.join('.');
+    if (!fieldName) continue;
+
+    if (!paramPlaceholderMap[root]) {
+      paramPlaceholderMap[root] = [];
+    }
+
+    if (!paramPlaceholderMap[root].includes(fieldName)) {
+      paramPlaceholderMap[root].push(fieldName);
+    }
+  }
+
+  const paramFieldHasValues = {};
+  for (const [paramName, valueMap] of Object.entries(paramGroups || {})) {
+    for (const fields of Object.values(valueMap || {})) {
+      for (const fieldName of Object.keys(fields || {})) {
+        if (!paramFieldHasValues[paramName]) {
+          paramFieldHasValues[paramName] = {};
+        }
+        paramFieldHasValues[paramName][fieldName] = true;
+      }
     }
   }
 
@@ -33,22 +73,47 @@
     </tr>
   `).join('');
 
-  const placeholderList = responseVars.length
-    ? responseVars.map((name) => {
-        const hasValue = Boolean(varsByKey[name]);
-        return `
-          <li style="padding: 0.5rem 0; display: flex; justify-content: space-between; gap: 1rem; align-items: center; border-bottom: 1px solid var(--muted-border-color);">
-            <div>
-              <code>{{vars.${escapeHtml(name)}}}</code>
-              <p class="muted" style="margin: 0.25rem 0 0;">${hasValue ? 'Saved and ready to use' : 'Needs a value. Add one below.'}</p>
-            </div>
-            <span class="tag ${hasValue ? 'success' : ''}" style="min-width: 8rem; text-align: center;">
-              ${hasValue ? 'Value added' : 'Pending'}
-            </span>
-          </li>
-        `;
-      }).join('')
-    : `<li class="muted" style="padding: 0.5rem 0;">No placeholders detected yet. You can still add custom variables below.</li>`;
+  const placeholderEntries = [];
+
+  for (const name of responseVars) {
+    const hasValue = Boolean(varsByKey[name]);
+    placeholderEntries.push(`
+      <li style="padding: 0.5rem 0; display: flex; justify-content: space-between; gap: 1rem; align-items: center; border-bottom: 1px solid var(--muted-border-color);">
+        <div>
+          <code>{{vars.${escapeHtml(name)}}}</code>
+          <p class="muted" style="margin: 0.25rem 0 0;">${hasValue ? 'Saved and ready to use' : 'Needs a value. Add one below.'}</p>
+        </div>
+        <span class="tag ${hasValue ? 'success' : ''}" style="min-width: 8rem; text-align: center;">
+          ${hasValue ? 'Value added' : 'Pending'}
+        </span>
+      </li>
+    `);
+  }
+
+  for (const [paramName, fields] of Object.entries(paramPlaceholderMap)) {
+    const sortedFields = [...fields].sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' }));
+    for (const fieldName of sortedFields) {
+      const hasValue = Boolean(paramFieldHasValues[paramName]?.[fieldName]);
+      const statusMessage = hasValue
+        ? `Saved for at least one ${escapeHtml(paramName)} value`
+        : 'Add this field in Step 3 below to reuse it in templates.';
+      placeholderEntries.push(`
+        <li style="padding: 0.5rem 0; display: flex; justify-content: space-between; gap: 1rem; align-items: center; border-bottom: 1px solid var(--muted-border-color);">
+          <div>
+            <code>{{${escapeHtml(`${paramName}.${fieldName}`)}}}</code>
+            <p class="muted" style="margin: 0.25rem 0 0;">${statusMessage}</p>
+          </div>
+          <span class="tag ${hasValue ? 'success' : ''}" style="min-width: 8rem; text-align: center;">
+            ${hasValue ? 'Value added' : 'Pending'}
+          </span>
+        </li>
+      `);
+    }
+  }
+
+  const placeholderList = placeholderEntries.length
+    ? placeholderEntries.join('')
+    : `<li class="muted" style="padding: 0.5rem 0;">No placeholders detected yet. Add tokens like <code>{{vars.NAME}}</code> or <code>{{userid.name}}</code> to your response body to unlock guided setup.</li>`;
 
   const placeholderOptions = responseVars.length
     ? [`<option value="">Pick a placeholder from the response…</option>`, ...responseVars.map((name) => `<option value="${escapeHtml(name)}">{{vars.${escapeHtml(name)}}}</option>`), '<option value="__custom__">Something else…</option>'].join('')
@@ -249,7 +314,7 @@
 
       <section class="stack" style="gap: 1rem;">
         <h3 style="margin: 0;">Step 1 · Review the placeholders</h3>
-        <p class="muted" style="margin: 0;">These come straight from the response body (<code>{{vars.NAME}}</code> format).</p>
+        <p class="muted" style="margin: 0;">These come straight from the response body (for example <code>{{vars.NAME}}</code> or <code>{{userid.name}}</code>).</p>
         <ul style="list-style: none; padding: 0; margin: 0; border: 1px solid var(--muted-border-color); border-radius: 0.5rem; padding: 0.5rem 1rem; background: var(--muted-border-color, #f4f6f8);">
           ${placeholderList}
         </ul>
