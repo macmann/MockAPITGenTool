@@ -1,4 +1,7 @@
 <%
+  const routes = Array.isArray(list) ? list : Array.isArray(routes) ? routes : [];
+  const q = query || {};
+  const keyParam = encodeURIComponent(q.key || '');
   const body = `
     <section>
       <h2>Registered Routes</h2>
@@ -10,12 +13,13 @@
             <th>Method</th>
             <th>Path</th>
             <th>Description</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
           ${routes.length === 0 ? `
             <tr>
-              <td colspan="4">No routes have been created yet.</td>
+              <td colspan="5">No routes have been created yet.</td>
             </tr>
           ` : routes.map((route) => `
             <tr>
@@ -23,6 +27,13 @@
               <td>${route.method}</td>
               <td>${route.path}</td>
               <td>${route.description || ''}</td>
+              <td>
+                <div class="button-group">
+                  <a class="button button-outline" href="/admin/${route.id}?key=${keyParam}">Edit</a>
+                  <a class="button button-outline" href="/admin/${route.id}/vars?key=${keyParam}">Vars</a>
+                  <a class="button button-outline" href="/admin/${route.id}/logs?key=${keyParam}">Logs</a>
+                </div>
+              </td>
             </tr>
           `).join('')}
         </tbody>

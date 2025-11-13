@@ -1,8 +1,18 @@
 <%
   const routeData = route || { method: 'GET', path: '/', response: '{}' };
+  const e = endpoint || routeData;
+  const q = query || {};
+  const keyParam = encodeURIComponent(q.key || '');
   const body = `
     <section>
       <h2>${title}</h2>
+      ${e && e.id ? `
+      <p>
+        <a href="/admin/${e.id}?key=${keyParam}">Edit</a> ·
+        <a href="/admin/${e.id}/vars?key=${keyParam}">Vars</a> ·
+        <a href="/admin/${e.id}/logs?key=${keyParam}">Logs</a>
+      </p>
+      ` : ''}
       ${error ? `<article class="error">${error.message || error}</article>` : ''}
       <form id="route-form" method="post" action="/api/routes">
         <input type="hidden" name="id" value="${routeData.id || ''}" />
