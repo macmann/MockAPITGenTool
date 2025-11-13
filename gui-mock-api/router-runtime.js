@@ -1,34 +1,94 @@
-const express = require('express');
-const createError = require('http-errors');
-const { object, string } = require('yup');
-const { nanoid } = require('nanoid');
-const { getAllRoutes, saveRoute } = require('./db');
+import express from 'express';
+import createError from 'http-errors';
+import { allEndpoints, listVars, insertLog } from './db.js';
+import { renderTemplate } from './templates.js';
+import { nanoid } from 'nanoid';
 
-const router = express.Router();
+// simple path-to-regex converter supporting :params
+function pathToRegex(path) {
+  const keys = [];
+  const rx = path
+    .replace(/\//g, '\\/')
+    .replace(/:(\w+)/g, (_, k) => { keys.push(k); return '([^/]+)'; });
+  return { regex: new RegExp(`^${rx}$`), keys };
+}
 
-const routeSchema = object({
-  id: string().optional(),
-  method: string().required(),
-  path: string().required(),
-  response: string().required(),
-  description: string().optional()
-});
+export function buildRuntimeRouter() {
+  const r = express.Router();
 
-router.get('/api/routes', (req, res) => {
-  res.json({ routes: getAllRoutes() });
-});
+  r.all('*', async (req, res, next) => {
+    const list = allEndpoints().filter(e => e.enabled);
 
-router.post('/api/routes', async (req, res, next) => {
-  try {
-    const payload = await routeSchema.validate(req.body, { abortEarly: false, stripUnknown: true });
-    const record = saveRoute({
-      ...payload,
-      id: payload.id || nanoid()
+    const match = list.find(e => {
+      if (e.method.toUpperCase() !== req.method) return false;
+      const { regex, keys } = pathToRegex(e.path);
+      const m = req.path.match(regex);
+      if (!m) return false;
+      const hdr = JSON.parse(e.match_headers || '{}');
+      for (const [k, v] of Object.entries(hdr)) {
+        if ((req.headers[k.toLowerCase()] || '').toString() !== v.toString()) return false;
+      }
+      req.matchedParams = keys.reduce((acc, k, i) => (acc[k] = m[i+1], acc), {});
+      req._matchedEndpoint = e;
+      return true;
     });
-    res.status(201).json(record);
-  } catch (err) {
-    next(createError(400, err.message));
-  }
-});
 
-module.exports = router;
+    if (!match) return next(createError(404, 'No mock matched'));
+
+    // Load per-endpoint variables
+    const varRows = listVars(match.id);
+    const vars = Object.fromEntries(varRows.map(r => [r.k, r.v]));
+
+    const ctx = {
+      params: req.matchedParams || {},
+      query: req.query || {},
+      headers: req.headers || {},
+      body: req.body || {},
+      vars,
+      now: new Date().toISOString()
+    };
+
+    const start = Date.now();
+    const delay = Number(match.response_delay_ms || 0);
+    const status = Number(match.response_status || 200);
+    const hdrs = JSON.parse(match.response_headers || '{}');
+    for (const [k, v] of Object.entries(hdrs)) res.setHeader(k, String(v));
+
+    const payloadRaw = match.response_body || '';
+    const payload = match.template_enabled ? renderTemplate(payloadRaw, ctx) : payloadRaw;
+
+    const send = () => {
+      let out, code = status;
+      try {
+        if (match.response_is_json) {
+          try {
+            out = JSON.parse(payload);
+            res.status(status).json(out);
+          } catch {
+            res.status(status).type('application/json').send(payload);
+          }
+        } else {
+          res.status(status).send(payload);
+        }
+      } finally {
+        // log the call
+        insertLog({
+          id: nanoid(12),
+          endpoint_id: match.id,
+          method: req.method,
+          path: req.originalUrl || req.path,
+          matched_params: JSON.stringify(ctx.params || {}),
+          query: JSON.stringify(ctx.query || {}),
+          headers: JSON.stringify(ctx.headers || {}),
+          body: JSON.stringify(ctx.body || {}),
+          status: code,
+          response_ms: Date.now() - start,
+        });
+      }
+    };
+
+    if (delay > 0) setTimeout(send, delay); else send();
+  });
+
+  return r;
+}
