@@ -20,5 +20,8 @@
       <%- body %>
     </main>
     <script src="/public/admin.js" defer></script>
+    <% if (typeof scripts !== 'undefined' && scripts) { %>
+      <%- scripts %>
+    <% } %>
   </body>
 </html>

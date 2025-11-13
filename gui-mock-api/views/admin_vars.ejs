@@ -7,6 +7,19 @@
     .replace(/'/g, '&#39;');
 
   const keyQuery = query.key ? `?key=${encodeURIComponent(query.key)}` : '';
+  const responseBody = String(e.response_body || '');
+  const placeholderRegex = /{{\s*vars\.([a-zA-Z0-9_\.\-]+)\s*}}/g;
+  const responseVars = [];
+  let match;
+  while ((match = placeholderRegex.exec(responseBody)) !== null) {
+    const name = match[1];
+    if (name && !responseVars.includes(name)) {
+      responseVars.push(name);
+    }
+  }
+
+  const varsByKey = Object.fromEntries((vars || []).map((row) => [row.k, row]));
+
   const varsRows = (vars || []).map((row) => `
     <tr>
       <td><code>${escapeHtml(row.k)}</code></td>
@@ -20,31 +33,127 @@
     </tr>
   `).join('');
 
+  const placeholderList = responseVars.length
+    ? responseVars.map((name) => {
+        const hasValue = Boolean(varsByKey[name]);
+        return `
+          <li style="padding: 0.5rem 0; display: flex; justify-content: space-between; gap: 1rem; align-items: center; border-bottom: 1px solid var(--muted-border-color);">
+            <div>
+              <code>{{vars.${escapeHtml(name)}}}</code>
+              <p class="muted" style="margin: 0.25rem 0 0;">${hasValue ? 'Saved and ready to use' : 'Needs a value. Add one below.'}</p>
+            </div>
+            <span class="tag ${hasValue ? 'success' : ''}" style="min-width: 8rem; text-align: center;">
+              ${hasValue ? 'Value added' : 'Pending'}
+            </span>
+          </li>
+        `;
+      }).join('')
+    : `<li class="muted" style="padding: 0.5rem 0;">No placeholders detected yet. You can still add custom variables below.</li>`;
+
+  const placeholderOptions = responseVars.length
+    ? [`<option value="">Pick a placeholder from the response…</option>`, ...responseVars.map((name) => `<option value="${escapeHtml(name)}">{{vars.${escapeHtml(name)}}}</option>`), '<option value="__custom__">Something else…</option>'].join('')
+    : `<option value="__custom__" selected>Type a variable name</option>`;
+
   const body = `
-    <section>
-      <header class="flex" style="justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
-        <div>
-          <h2 style="margin-bottom: 0.25rem;">Variables for <code>${escapeHtml(e.method)} ${escapeHtml(e.path)}</code></h2>
-          <p class="muted" style="margin: 0;">Reference these in responses with <code>{{vars.KEY}}</code>.</p>
+    <section class="stack" style="display: flex; flex-direction: column; gap: 2rem;">
+      <header class="flex" style="justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
+        <div class="stack" style="gap: 0.5rem;">
+          <h2 style="margin: 0;">Variables for <code>${escapeHtml(e.method)} ${escapeHtml(e.path)}</code></h2>
+          <p class="muted" style="margin: 0; max-width: 60ch;">Follow the guided steps to capture the values you want to reuse. We’ve scanned the response body and surfaced any placeholders we found.</p>
         </div>
         <a class="secondary" href="/admin/${encodeURIComponent(e.id)}${keyQuery}">Back to endpoint</a>
       </header>
-      <table>
-        <thead>
-          <tr><th>Key</th><th>Value</th><th></th></tr>
-        </thead>
-        <tbody>
-          ${varsRows || `<tr><td colspan="3" class="muted">No variables yet.</td></tr>`}
-        </tbody>
-      </table>
-      <form method="post" action="/admin/${encodeURIComponent(e.id)}/vars/save${keyQuery}" class="grid" style="margin-top: 1.5rem; gap: 1rem;">
-        <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
-          <label>Key<input name="k" placeholder="price" required /></label>
-          <label>Value<input name="v" placeholder="199.00" required /></label>
-        </div>
-        <button type="submit" class="button primary">Save Variable</button>
-      </form>
+
+      <section class="stack" style="gap: 1rem;">
+        <h3 style="margin: 0;">Step 1 · Review the placeholders</h3>
+        <p class="muted" style="margin: 0;">These come straight from the response body (<code>{{vars.NAME}}</code> format).</p>
+        <ul style="list-style: none; padding: 0; margin: 0; border: 1px solid var(--muted-border-color); border-radius: 0.5rem; padding: 0.5rem 1rem; background: var(--muted-border-color, #f4f6f8);">
+          ${placeholderList}
+        </ul>
+      </section>
+
+      <section class="stack" style="gap: 1rem;">
+        <h3 style="margin: 0;">Step 2 · Capture a value</h3>
+        <p class="muted" style="margin: 0;">Work through the placeholders one at a time. Pick a name, add the friendly value, and save it.</p>
+        <form method="post" action="/admin/${encodeURIComponent(e.id)}/vars/save${keyQuery}" class="stack" style="gap: 1rem; border: 1px solid var(--muted-border-color); border-radius: 0.5rem; padding: 1.25rem; background: var(--surface-color, #fff);">
+          <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+            <label>
+              Choose a variable name
+              <select data-var-picker ${responseVars.length ? '' : 'hidden'}>
+                ${placeholderOptions}
+              </select>
+              ${responseVars.length ? '<small class="muted">We filled this from your response body. Pick one to pre-fill the name.</small>' : '<small class="muted">No placeholders yet? Type a custom name below.</small>'}
+            </label>
+            <label data-custom-wrapper ${responseVars.length ? '' : 'style="display:block;"'}>
+              Variable key
+              <input name="k" placeholder="userId" required data-var-key />
+              <small class="muted">Use plain letters, numbers, or underscores. This becomes <code>{{vars.YOUR_KEY}}</code>.</small>
+            </label>
+            <label>
+              Friendly value
+              <textarea name="v" rows="2" placeholder="Example: John Doe" required></textarea>
+              <small class="muted">This is the content that will replace the placeholder in responses.</small>
+            </label>
+          </div>
+          <button type="submit" class="button primary" style="align-self: flex-start;">Save variable</button>
+        </form>
+      </section>
+
+      <section class="stack" style="gap: 1rem;">
+        <h3 style="margin: 0;">Step 3 · Review saved variables</h3>
+        <p class="muted" style="margin: 0;">Update or remove any values below. Each key maps directly to a placeholder in your responses.</p>
+        <table>
+          <thead>
+            <tr><th>Key</th><th>Value</th><th></th></tr>
+          </thead>
+          <tbody>
+            ${varsRows || `<tr><td colspan="3" class="muted">No variables yet. Add one above to get started.</td></tr>`}
+          </tbody>
+        </table>
+      </section>
     </section>
   `;
 %>
-<%- include('layout', { title: `Variables · ${e.method} ${e.path}`, body }) %>
+<%- include('layout', {
+  title: `Variables · ${e.method} ${e.path}`,
+  body,
+  scripts: `
+    <script>
+      (function() {
+        const picker = document.querySelector('[data-var-picker]');
+        const keyInput = document.querySelector('[data-var-key]');
+        const customWrapper = document.querySelector('[data-custom-wrapper]');
+        if (!keyInput) return;
+
+        function syncFromPicker(value) {
+          if (!value || value === '__custom__') {
+            if (customWrapper) {
+              customWrapper.style.display = 'block';
+            }
+            keyInput.removeAttribute('readonly');
+            if (value !== '__custom__') {
+              keyInput.value = '';
+            }
+            keyInput.focus();
+            return;
+          }
+
+          keyInput.value = value;
+          keyInput.setAttribute('readonly', 'readonly');
+          if (customWrapper) {
+            customWrapper.style.display = 'block';
+          }
+        }
+
+        if (picker) {
+          syncFromPicker(picker.value);
+          picker.addEventListener('change', (event) => {
+            syncFromPicker(event.target.value);
+          });
+        } else {
+          syncFromPicker('__custom__');
+        }
+      })();
+    </script>
+  `
+}) %>
