@@ -38,7 +38,6 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 const ADMIN_KEY = process.env.ADMIN_KEY || process.env.ADMIN_TOKEN || process.env.ADMIN_SECRET || '';
 
 app.set('view engine', 'ejs');
@@ -961,11 +960,5 @@ app.use((err, req, res, next) => {
   });
 });
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  app.listen(PORT, () => {
-    // eslint-disable-next-line no-console
-    console.log(`GUI Mock API server listening on port ${PORT}`);
-  });
-}
-
+export { app };
 export default app;
