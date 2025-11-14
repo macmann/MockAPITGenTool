@@ -58,6 +58,30 @@ CREATE TABLE IF NOT EXISTS api_logs (
   created_at TEXT DEFAULT (datetime('now')),
   FOREIGN KEY(endpoint_id) REFERENCES endpoints(id) ON DELETE SET NULL
 );
+CREATE TABLE IF NOT EXISTS mcp_servers (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  base_url TEXT,           -- e.g. http://localhost:3000 or https://brillar-api-tool.onrender.com
+  api_key_header TEXT,     -- e.g. x-api-key
+  api_key_value TEXT,      -- e.g. secret
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now')),
+  is_enabled INTEGER DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS mcp_tools (
+  id TEXT PRIMARY KEY,
+  mcp_server_id TEXT NOT NULL,
+  endpoint_id TEXT NOT NULL,
+  name TEXT NOT NULL,       -- MCP tool name (e.g. getUserDetails)
+  description TEXT,
+  arg_schema TEXT,          -- JSON schema describing tool input
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY(mcp_server_id) REFERENCES mcp_servers(id) ON DELETE CASCADE,
+  FOREIGN KEY(endpoint_id) REFERENCES endpoints(id) ON DELETE CASCADE
+);
 `);
 
 function normalizeEndpoint(row) {
