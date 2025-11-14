@@ -164,16 +164,7 @@ export function createMcpRouter(options = {}) {
     await transport.handleRequest(req, res, bodyOverride ?? req.body);
   }
 
-  router.all('/', async (req, res, next) => {
-    try {
-      await handleRequest(req, res);
-    } catch (err) {
-      console.error('[MCP] Request handling failed', err);
-      next(err);
-    }
-  });
-
-  router.all('*', async (req, res, next) => {
+  router.use(async (req, res, next) => {
     try {
       await handleRequest(req, res);
     } catch (err) {
