@@ -104,6 +104,62 @@
       .action-buttons form {
         margin: 0;
       }
+
+      .connection-card {
+        background: #fff;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        border-radius: 1rem;
+        padding: 1.5rem;
+        box-shadow: 0 0.5rem 1.5rem rgba(13, 110, 253, 0.08);
+      }
+
+      .config-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.25rem;
+      }
+
+      .config-field {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+      }
+
+      .config-field--wide {
+        grid-column: span 2;
+      }
+
+      @media (max-width: 720px) {
+        .config-field--wide {
+          grid-column: span 1;
+        }
+      }
+
+      .config-field--stacked {
+        margin-bottom: 0;
+      }
+
+      .config-label {
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #6c757d;
+      }
+
+      .config-value {
+        font-size: 1rem;
+        word-break: break-all;
+      }
+
+      .config-headers {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+      }
     </style>
   </head>
   <body>

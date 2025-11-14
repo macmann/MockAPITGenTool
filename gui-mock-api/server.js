@@ -768,6 +768,21 @@ app.get('/admin/mcp/:id/info', requireAdmin, (req, res) => {
     infoPayload.authentication = { header: authHeader, value: authValue };
   }
 
+  const clientConfig = {
+    type: 'http',
+    url: mcpUrl,
+    timeoutMs: 3000,
+    sseReadTimeoutMs: 1000,
+    headers: hasAuth
+      ? [
+          {
+            header: authHeader,
+            value: authValue
+          }
+        ]
+      : []
+  };
+
   const connectionCommandParts = ['MCP_SERVER_ENABLED=true'];
   connectionCommandParts.push(`MCP_SERVER_ID=${s.id}`);
   if (baseUrl) {
@@ -792,7 +807,8 @@ app.get('/admin/mcp/:id/info', requireAdmin, (req, res) => {
     connectionCommand,
     infoPayload,
     mcpPublicUrl,
-    mcpUrl
+    mcpUrl,
+    clientConfig
   });
 });
 

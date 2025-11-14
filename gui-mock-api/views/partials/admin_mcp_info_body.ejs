@@ -1,50 +1,56 @@
 <h2>MCP connection details for <%= s.name %></h2>
-<p class="muted">Provide this information to trusted third parties that need to integrate with this MCP server.</p>
+<p class="muted">Share this information with trusted third parties so they can configure their MCP client.</p>
 
-<section>
-  <p>
-    <strong>MCP endpoint URL:</strong>
-    <code><%= mcpUrl %></code>
-  </p>
-  <% if (mcpPublicUrl) { %>
-    <p class="muted">Overridden via <code>MCP_PUBLIC_URL</code>.</p>
-  <% } else if (baseUrl) { %>
-    <p class="muted">Derived from the base URL plus <code>/mcp</code>.</p>
-  <% } else { %>
-    <p class="muted">No base URL configured; local requests can use <code>/mcp</code>.</p>
+<section class="connection-card">
+  <div class="config-grid">
+    <div class="config-field">
+      <span class="config-label">Type</span>
+      <code class="config-value"><%= clientConfig.type %></code>
+    </div>
+    <div class="config-field config-field--wide">
+      <span class="config-label">URL</span>
+      <code class="config-value"><%= clientConfig.url %></code>
+    </div>
+    <div class="config-field">
+      <span class="config-label">Timeout (ms)</span>
+      <code class="config-value"><%= clientConfig.timeoutMs %></code>
+    </div>
+    <div class="config-field">
+      <span class="config-label">SSE read timeout (ms)</span>
+      <code class="config-value"><%= clientConfig.sseReadTimeoutMs %></code>
+    </div>
+  </div>
+
+  <div class="config-field config-field--stacked">
+    <span class="config-label">Headers</span>
+    <% if (clientConfig.headers.length === 0) { %>
+      <p class="muted">No authentication headers required.</p>
+    <% } else { %>
+      <ul class="config-headers">
+        <% for (const h of clientConfig.headers) { %>
+          <li><code><%= h.header %>: <%= h.value %></code></li>
+        <% } %>
+      </ul>
+    <% } %>
+  </div>
+
+  <% if (baseUrlSource === 'derived') { %>
+    <p class="muted" style="margin-top:0.5rem;">Tip: configure a base URL in the MCP server settings to avoid changes based on the current request.</p>
+  <% } else if (!baseUrl && !mcpPublicUrl) { %>
+    <div class="flash flash-error" style="margin-top:0.5rem;">No base URL configured yet. Local requests can use <code>/mcp</code>.</div>
   <% } %>
 </section>
 
 <section>
-  <h3>HTTP base configuration</h3>
-  <% if (baseUrl) { %>
-    <p>
-      <strong>Base URL:</strong>
-      <code><%= baseUrl %></code>
-      <% if (baseUrlSource === 'derived') { %>
-        <br/><span class="muted">Derived from the current request. Update the MCP server settings to lock this value.</span>
-      <% } else if (baseUrlSource === 'configured') { %>
-        <br/><span class="muted">Configured in the MCP server settings.</span>
-      <% } %>
-    </p>
-  <% } else { %>
-    <div class="flash flash-error">No base URL is configured yet. Update the MCP server before sharing.</div>
-  <% } %>
-
-  <% if (hasAuth) { %>
-    <p>
-      <strong>Authentication header:</strong>
-      <code><%= authHeader %>: <%= authValue %></code>
-    </p>
-  <% } else { %>
-    <p class="muted">No API key header is configured. Requests can be sent without additional authentication.</p>
-  <% } %>
+  <h3>Shareable JSON summary</h3>
+  <p class="muted">Includes the minimum fields a client needs to connect.</p>
+  <pre><code><%- JSON.stringify(infoPayload, null, 2) %></code></pre>
 </section>
 
 <section>
   <h3>Available tools</h3>
   <% if ((tools || []).length === 0) { %>
-    <p class="muted">No MCP tools have been added yet. Create at least one tool to expose mock endpoints.</p>
+    <p class="muted">No MCP tools have been added yet. Add at least one tool to expose mock endpoints.</p>
   <% } else { %>
     <table>
       <thead>
@@ -67,27 +73,6 @@
       </tbody>
     </table>
   <% } %>
-</section>
-
-<section>
-  <h3>Quick start examples</h3>
-  <p class="muted">Use these snippets as a starting point for local testing.</p>
-  <article>
-    <header><strong>Run the MCP bridge</strong></header>
-    <pre><code><%= connectionCommand %></code></pre>
-  </article>
-  <% if (curlExample) { %>
-    <article>
-      <header><strong>Sample HTTP call</strong></header>
-      <pre><code><%= curlExample %></code></pre>
-    </article>
-  <% } %>
-</section>
-
-<section>
-  <h3>Shareable JSON summary</h3>
-  <p class="muted">Includes the minimum fields a client needs to connect.</p>
-  <pre><code><%- JSON.stringify(infoPayload, null, 2) %></code></pre>
 </section>
 
 <p style="margin-top:1.5rem;">
