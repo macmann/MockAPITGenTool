@@ -1,6 +1,7 @@
 import path from 'path';
 import Database from 'better-sqlite3';
 import { fileURLToPath } from 'url';
+import { nanoid } from 'nanoid';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -203,6 +204,85 @@ export function getLog(id) {
   return db.prepare('SELECT * FROM api_logs WHERE id = ?').get(id);
 }
 
+export function listMcpServers() {
+  return db.prepare('SELECT * FROM mcp_servers ORDER BY created_at DESC').all();
+}
+
+export function getMcpServer(id) {
+  return db.prepare('SELECT * FROM mcp_servers WHERE id = ?').get(id);
+}
+
+export function upsertMcpServer(row) {
+  const now = new Date().toISOString();
+  if (!row.id) {
+    row.id = nanoid(12);
+    db.prepare(`
+      INSERT INTO mcp_servers (id, name, description, base_url, api_key_header, api_key_value, is_enabled, created_at, updated_at)
+      VALUES (@id, @name, @description, @base_url, @api_key_header, @api_key_value, @is_enabled, @created_at, @updated_at)
+    `).run({ ...row, created_at: now, updated_at: now });
+  } else {
+    db.prepare(`
+      UPDATE mcp_servers
+      SET name=@name,
+          description=@description,
+          base_url=@base_url,
+          api_key_header=@api_key_header,
+          api_key_value=@api_key_value,
+          is_enabled=@is_enabled,
+          updated_at=@updated_at
+      WHERE id=@id
+    `).run({ ...row, updated_at: now });
+  }
+  return getMcpServer(row.id);
+}
+
+export function deleteMcpServer(id) {
+  db.prepare('DELETE FROM mcp_servers WHERE id = ?').run(id);
+}
+
+export function listMcpTools(mcpServerId) {
+  return db.prepare('SELECT * FROM mcp_tools WHERE mcp_server_id = ? ORDER BY created_at DESC').all(mcpServerId);
+}
+
+export function getMcpTool(id) {
+  return db.prepare('SELECT * FROM mcp_tools WHERE id = ?').get(id);
+}
+
+export function upsertMcpTool(row) {
+  const now = new Date().toISOString();
+  if (!row.id) {
+    row.id = nanoid(12);
+    db.prepare(`
+      INSERT INTO mcp_tools (id, mcp_server_id, endpoint_id, name, description, arg_schema, created_at, updated_at)
+      VALUES (@id, @mcp_server_id, @endpoint_id, @name, @description, @arg_schema, @created_at, @updated_at)
+    `).run({ ...row, created_at: now, updated_at: now });
+  } else {
+    db.prepare(`
+      UPDATE mcp_tools
+      SET name=@name,
+          description=@description,
+          arg_schema=@arg_schema,
+          updated_at=@updated_at
+      WHERE id=@id
+    `).run({ ...row, updated_at: now });
+  }
+  return getMcpTool(row.id);
+}
+
+export function deleteMcpTool(id) {
+  db.prepare('DELETE FROM mcp_tools WHERE id = ?').run(id);
+}
+
+export function listMcpToolsWithEndpoints(mcpServerId) {
+  return db.prepare(`
+    SELECT t.*, e.method, e.path
+    FROM mcp_tools t
+    JOIN endpoints e ON e.id = t.endpoint_id
+    WHERE t.mcp_server_id = ?
+    ORDER BY t.created_at DESC
+  `).all(mcpServerId);
+}
+
 export default {
   db,
   allEndpoints,
@@ -215,5 +295,14 @@ export default {
   deleteVar,
   insertLog,
   listLogs,
-  getLog
+  getLog,
+  listMcpServers,
+  getMcpServer,
+  upsertMcpServer,
+  deleteMcpServer,
+  listMcpTools,
+  getMcpTool,
+  upsertMcpTool,
+  deleteMcpTool,
+  listMcpToolsWithEndpoints
 };
