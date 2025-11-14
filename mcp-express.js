@@ -133,6 +133,34 @@ function createMcpServer({ serverId, mockBaseUrl }) {
   return { server, resolvedMockBaseUrl };
 }
 
+function truncateHeaders(headers) {
+  const out = {};
+  for (const k in headers) {
+    if (!Object.prototype.hasOwnProperty.call(headers, k)) continue;
+    let v = String(headers[k]);
+    if (v.length > 200) v = v.slice(0, 200) + '...[truncated]';
+    out[k] = v;
+  }
+  return out;
+}
+
+function previewPayload(x) {
+  if (x === undefined) return '[undefined]';
+  if (x === null) return 'null';
+  let s;
+  if (typeof x === 'string') {
+    s = x;
+  } else {
+    try {
+      s = JSON.stringify(x);
+    } catch (err) {
+      s = `[unserializable payload: ${err?.message || err}]`;
+    }
+  }
+  if (s.length > 300) s = s.slice(0, 300) + '...[truncated]';
+  return s;
+}
+
 export function createMcpRouter(options = {}) {
   const serverId = options.serverId || process.env.MCP_SERVER_ID;
   if (!serverId) {
@@ -145,6 +173,26 @@ export function createMcpRouter(options = {}) {
   });
 
   const router = express.Router();
+
+  router.use(
+    express.raw({ type: '*/*', limit: '5mb' }),
+    (req, res, next) => {
+      req.rawBody = req.body;
+      next();
+    }
+  );
+
+  router.use((req, res, next) => {
+    const origEnd = res.end;
+    res.end = function (...args) {
+      console.log('[MCP] Response end', {
+        time: new Date().toISOString(),
+        status: res.statusCode
+      });
+      return origEnd.apply(this, args);
+    };
+    next();
+  });
 
   async function handleRequest(req, res, bodyOverride) {
     const transport = new StreamableHTTPServerTransport({
@@ -161,14 +209,40 @@ export function createMcpRouter(options = {}) {
     });
 
     await server.connect(transport);
-    await transport.handleRequest(req, res, bodyOverride ?? req.body);
+    await transport.handleRequest(
+      req,
+      res,
+      bodyOverride ?? req.rawBody ?? req.body
+    );
   }
 
   router.use(async (req, res, next) => {
+    const rawBodyBuffer = req.rawBody;
+    const rawBodyAsString =
+      rawBodyBuffer && rawBodyBuffer.length > 0
+        ? rawBodyBuffer.toString('utf8')
+        : '[empty body]';
+
+    console.log('[MCP] Incoming request', {
+      time: new Date().toISOString(),
+      method: req.method,
+      url: req.originalUrl,
+      headers: truncateHeaders(req.headers),
+      body: rawBodyAsString
+    });
+
     try {
-      await handleRequest(req, res);
+      const result = await handleRequest(req, res);
+      console.log('[MCP] Response sent', {
+        time: new Date().toISOString(),
+        status: res.statusCode,
+        resultPreview: previewPayload(result)
+      });
     } catch (err) {
-      console.error('[MCP] Request handling failed', err);
+      console.error('[MCP] Handler error', {
+        time: new Date().toISOString(),
+        error: err?.stack || String(err)
+      });
       next(err);
     }
   });
