@@ -1,49 +1,8 @@
-<% layout('layout', { base: '' }) %>
-<h2><%= s.id ? 'Edit MCP Server' : 'New MCP Server' %></h2>
-<p class="muted">Base URL should point to your mock API runtime (e.g. http://localhost:3000 or your Render URL).</p>
-
-<form method="post" action="/admin/mcp/save?key=<%= encodeURIComponent(query.key||'') %>" class="grid" style="gap:1rem;">
-  <input type="hidden" name="id" value="<%= s.id || '' %>"/>
-
-  <label>
-    Name
-    <input name="name" required value="<%= s.name || '' %>"/>
-  </label>
-
-  <label>
-    Description
-    <input name="description" value="<%= s.description || '' %>"/>
-  </label>
-
-  <label>
-    Base URL
-    <input name="base_url" placeholder="http://localhost:3000" value="<%= s.base_url || '' %>"/>
-  </label>
-
-  <label>
-    API Key Header (optional)
-    <input name="api_key_header" placeholder="x-api-key" value="<%= s.api_key_header || '' %>"/>
-  </label>
-
-  <label>
-    API Key Value (optional)
-    <input name="api_key_value" placeholder="secret" value="<%= s.api_key_value || '' %>"/>
-  </label>
-
-  <label class="checkbox">
-    <input type="checkbox" name="is_enabled" value="true" <%= s.is_enabled ? 'checked' : '' %>/>
-    Enabled
-  </label>
-
-  <button class="button primary" type="submit">Save</button>
-</form>
-
-<% if (s.id) { %>
-  <form method="post" action="/admin/mcp/<%= s.id %>/delete?key=<%= encodeURIComponent(query.key||'') %>" style="margin-top:1rem;" onsubmit="return confirm('Delete this MCP server?');">
-    <button class="button contrast" type="submit">Delete</button>
-  </form>
-
-  <p style="margin-top:1rem;">
-    <a href="/admin/mcp/<%= s.id %>/tools?key=<%= encodeURIComponent(query.key||'') %>">Manage tools for this server →</a>
-  </p>
-<% } %>
+<%
+  const title = s.id ? 'Edit MCP Server' : 'New MCP Server';
+  const body = include('partials/admin_mcp_edit_body', {
+    s,
+    query,
+  });
+%>
+<%- include('layout', { title, body, adminKey: query?.key }) %>
