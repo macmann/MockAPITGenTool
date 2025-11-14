@@ -1,0 +1,76 @@
+<%
+  const escapeHtml = (value) => String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+  const server = s || {};
+  const keyQuery = query?.key ? `?key=${encodeURIComponent(query.key)}` : '';
+  const formAction = `/admin/mcp/save${keyQuery}`;
+  const deleteAction = server.id ? `/admin/mcp/${encodeURIComponent(server.id)}/delete${keyQuery}` : '';
+  const toolsLink = server.id ? `/admin/mcp/${encodeURIComponent(server.id)}/tools${keyQuery}` : '';
+  const enabled = Number(server.is_enabled) !== 0;
+
+  const body = `
+    <section class="stack" style="display: flex; flex-direction: column; gap: 2rem;">
+      <header class="flex" style="justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
+        <div>
+          <h2 style="margin-bottom: 0.25rem;">${escapeHtml(server.id ? 'Edit MCP Server' : 'Create MCP Server')}</h2>
+          <p class="muted" style="margin: 0;">Describe how to reach your MCP deployment so its tools can power your mocks.</p>
+        </div>
+        <div class="flex" style="gap: 0.5rem;">
+          <a class="secondary" href="/admin/mcp${keyQuery}">Back to list</a>
+          ${server.id ? `<a class="secondary" href="${toolsLink}">Manage tools</a>` : ''}
+        </div>
+      </header>
+      <form method="post" action="${formAction}" class="stack" style="display: flex; flex-direction: column; gap: 1.5rem;">
+        <input type="hidden" name="id" value="${escapeHtml(server.id || '')}" />
+        <fieldset>
+          <legend>Server details</legend>
+          <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem;">
+            <label>
+              Name
+              <input required name="name" placeholder="Acme MCP" value="${escapeHtml(server.name || '')}" />
+            </label>
+            <label>
+              Description
+              <input name="description" placeholder="Optional notes" value="${escapeHtml(server.description || '')}" />
+            </label>
+          </div>
+          <label>
+            Base URL
+            <input required name="base_url" type="url" placeholder="http://localhost:3000" value="${escapeHtml(server.base_url || '')}" />
+            <small class="muted">We’ll call this origin for all tool invocations.</small>
+          </label>
+        </fieldset>
+        <fieldset>
+          <legend>Authentication</legend>
+          <p class="muted">Leave blank if your MCP server does not require an API key.</p>
+          <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+            <label>
+              Header name
+              <input name="api_key_header" placeholder="x-api-key" value="${escapeHtml(server.api_key_header || '')}" />
+            </label>
+            <label>
+              Header value
+              <input name="api_key_value" placeholder="super-secret" value="${escapeHtml(server.api_key_value || '')}" />
+            </label>
+          </div>
+        </fieldset>
+        <label class="checkbox">
+          <input type="checkbox" name="is_enabled" value="true" ${enabled ? 'checked' : ''} />
+          <span>Enable this MCP server</span>
+        </label>
+        <button type="submit" class="button primary">Save MCP server</button>
+      </form>
+      ${server.id ? `
+        <form method="post" action="${deleteAction}" onsubmit="return confirm('Delete this MCP server?');">
+          <button class="contrast" type="submit">Delete MCP server</button>
+        </form>
+      ` : ''}
+    </section>
+  `;
+%>
+<%- include('layout', { title: server.id ? 'Edit MCP Server' : 'Create MCP Server', body }) %>

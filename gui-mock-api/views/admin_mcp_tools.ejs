@@ -1,0 +1,128 @@
+<%
+  const escapeHtml = (value) => String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+  const server = s || {};
+  const keyQuery = query?.key ? `?key=${encodeURIComponent(query.key)}` : '';
+  const buildQuery = (extra = {}) => {
+    const params = new URLSearchParams();
+    if (query?.key) params.set('key', query.key);
+    Object.entries(extra).forEach(([k, v]) => {
+      if (typeof v === 'undefined' || v === null || v === '') return;
+      params.set(k, v);
+    });
+    const search = params.toString();
+    return search ? `?${search}` : '';
+  };
+  const baseSchema = '{"type":"object","properties":{},"required":[]}';
+  const selectedToolId = query?.tool || '';
+  const editingTool = selectedToolId ? (tools || []).find((tool) => tool.id === selectedToolId) : null;
+  const currentTool = editingTool || {
+    id: '',
+    name: '',
+    description: '',
+    endpoint_id: '',
+    arg_schema: baseSchema
+  };
+  const endpointOptions = (endpoints || []).map((endpoint) => {
+    const label = `${endpoint.method || 'GET'} ${endpoint.path || '/'}${endpoint.name ? ` — ${endpoint.name}` : ''}`;
+    const selected = String(endpoint.id) === String(currentTool.endpoint_id) ? 'selected' : '';
+    return `<option value="${escapeHtml(endpoint.id)}" ${selected}>${escapeHtml(label)}</option>`;
+  }).join('');
+  const rows = (tools || []).map((tool) => {
+    const description = tool.description ? `<div class="muted" style="margin-top: 0.35rem;">${escapeHtml(tool.description)}</div>` : '';
+    const statusLabel = tool.endpoint_id ? `<code>${escapeHtml(tool.method || '')}</code> <code>${escapeHtml(tool.path || '')}</code>` : '<span class="muted">Missing endpoint</span>';
+    const editHref = `/admin/mcp/${encodeURIComponent(server.id)}/tools${buildQuery({ tool: tool.id })}`;
+    const deleteAction = `/admin/mcp/${encodeURIComponent(server.id)}/tools/${encodeURIComponent(tool.id)}/delete${keyQuery}`;
+    return `
+      <tr>
+        <td>
+          <strong>${escapeHtml(tool.name)}</strong>
+          ${description}
+        </td>
+        <td>${statusLabel}</td>
+        <td class="right" style="white-space: nowrap;">
+          <a class="secondary" href="${editHref}">Edit</a>
+          <form method="post" action="${deleteAction}" style="display: inline;" onsubmit="return confirm('Delete this tool?');">
+            <button type="submit" class="secondary">Delete</button>
+          </form>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  const schemaValue = currentTool.arg_schema ? currentTool.arg_schema : baseSchema;
+  const isEditing = Boolean(currentTool.id);
+  const formAction = `/admin/mcp/${encodeURIComponent(server.id)}/tools/save${keyQuery}`;
+
+  const body = `
+    <section class="stack" style="display: flex; flex-direction: column; gap: 2rem;">
+      <header class="flex" style="justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
+        <div>
+          <h2 style="margin-bottom: 0.25rem;">${escapeHtml(server.name || 'MCP Server')}</h2>
+          <p class="muted" style="margin: 0;">Attach MCP tools to mock endpoints so they can run real logic.</p>
+        </div>
+        <div class="flex" style="gap: 0.5rem;">
+          <a class="secondary" href="/admin/mcp${keyQuery}">Back to servers</a>
+          <a class="secondary" href="/admin/mcp/${encodeURIComponent(server.id)}${keyQuery}">Server settings</a>
+        </div>
+      </header>
+      <section>
+        <h3 style="margin-bottom: 0.5rem;">Tools</h3>
+        <table role="grid">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Endpoint</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows || `
+              <tr>
+                <td colspan="3" class="muted">No tools yet. Use the form below to add one.</td>
+              </tr>
+            `}
+          </tbody>
+        </table>
+      </section>
+      <section>
+        <h3 style="margin-bottom: 0.5rem;">${isEditing ? 'Edit tool' : 'Add a new tool'}</h3>
+        <form method="post" action="${formAction}" class="stack" style="display: flex; flex-direction: column; gap: 1.25rem;">
+          <input type="hidden" name="id" value="${escapeHtml(currentTool.id || '')}" />
+          <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+            <label>
+              Tool name
+              <input required name="name" placeholder="getWeather" value="${escapeHtml(currentTool.name || '')}" />
+            </label>
+            <label>
+              Endpoint
+              <select required name="endpoint_id">
+                <option value="" ${currentTool.endpoint_id ? '' : 'selected'} disabled>Select an endpoint…</option>
+                ${endpointOptions}
+              </select>
+            </label>
+          </div>
+          <label>
+            Description
+            <input name="description" placeholder="Explain what this tool does" value="${escapeHtml(currentTool.description || '')}" />
+          </label>
+          <label>
+            Argument schema (JSON)
+            <textarea name="arg_schema" rows="6" placeholder='{"type":"object","properties":{},"required":[]}' required>${escapeHtml(schemaValue)}</textarea>
+            <small class="muted">Describe the input your MCP tool expects. Defaults to an empty object schema.</small>
+          </label>
+          <div class="flex" style="gap: 0.5rem;">
+            <button type="submit" class="button primary">${isEditing ? 'Update tool' : 'Create tool'}</button>
+            ${isEditing ? `<a class="secondary" href="/admin/mcp/${encodeURIComponent(server.id)}/tools${buildQuery()}">Cancel edit</a>` : ''}
+          </div>
+        </form>
+      </section>
+    </section>
+  `;
+%>
+<%- include('layout', { title: `${escapeHtml(server.name || 'MCP Server')} · Tools`, body }) %>

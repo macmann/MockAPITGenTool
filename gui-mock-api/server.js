@@ -18,7 +18,15 @@ import {
   upsertVar,
   deleteVar,
   listLogs,
-  getLog
+  getLog,
+  listMcpServers,
+  getMcpServer,
+  upsertMcpServer,
+  deleteMcpServer,
+  listMcpTools,
+  listMcpToolsWithEndpoints,
+  upsertMcpTool,
+  deleteMcpTool
 } from './db.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -586,6 +594,100 @@ app.get('/admin/logs/:logId', requireAdmin, (req, res) => {
   const log = getLog(req.params.logId);
   if (!log) return res.status(404).send('Not found');
   res.render('admin_log_detail', { log, query: req.query });
+});
+
+// MCP servers list
+app.get('/admin/mcp', requireAdmin, (req, res) => {
+  const servers = listMcpServers().map((server) => ({
+    ...server,
+    tool_count: listMcpTools(server.id).length
+  }));
+  res.render('admin_mcp_list', { servers, query: req.query });
+});
+
+// New MCP server form
+app.get('/admin/mcp/new', requireAdmin, (req, res) => {
+  res.render('admin_mcp_edit', {
+    s: {
+      id: '',
+      name: '',
+      description: '',
+      base_url: 'http://localhost:3000',
+      api_key_header: '',
+      api_key_value: '',
+      is_enabled: 1
+    },
+    query: req.query
+  });
+});
+
+// Edit MCP server
+app.get('/admin/mcp/:id', requireAdmin, (req, res) => {
+  const s = getMcpServer(req.params.id);
+  if (!s) return res.status(404).send('MCP server not found');
+  res.render('admin_mcp_edit', { s, query: req.query });
+});
+
+// Save MCP server
+app.post('/admin/mcp/save', requireAdmin, (req, res) => {
+  const body = req.body;
+  const s = upsertMcpServer({
+    id: body.id || '',
+    name: body.name || '',
+    description: body.description || '',
+    base_url: body.base_url || '',
+    api_key_header: body.api_key_header || '',
+    api_key_value: body.api_key_value || '',
+    is_enabled: body.is_enabled === 'true' || body.is_enabled === 'on' ? 1 : 0
+  });
+  const keyQuery = persistAdminKey(req, res);
+  res.redirect(`/admin/mcp/${encodeURIComponent(s.id)}${keyQuery}`);
+});
+
+// Delete MCP server
+app.post('/admin/mcp/:id/delete', requireAdmin, (req, res) => {
+  deleteMcpServer(req.params.id);
+  const keyQuery = persistAdminKey(req, res);
+  res.redirect(`/admin/mcp${keyQuery}`);
+});
+
+// Manage tools for an MCP server
+app.get('/admin/mcp/:id/tools', requireAdmin, (req, res) => {
+  const s = getMcpServer(req.params.id);
+  if (!s) return res.status(404).send('MCP server not found');
+  const tools = listMcpToolsWithEndpoints(s.id);
+  const endpoints = allEndpoints();
+  res.render('admin_mcp_tools', { s, tools, endpoints, query: req.query });
+});
+
+// Add / update a single tool
+app.post('/admin/mcp/:id/tools/save', requireAdmin, (req, res) => {
+  const s = getMcpServer(req.params.id);
+  if (!s) return res.status(404).send('MCP server not found');
+
+  const body = req.body;
+  const argSchema = body.arg_schema || '{"type":"object","properties":{},"required":[]}';
+
+  upsertMcpTool({
+    id: body.id || '',
+    mcp_server_id: s.id,
+    endpoint_id: body.endpoint_id,
+    name: body.name,
+    description: body.description || '',
+    arg_schema: argSchema
+  });
+
+  const keyQuery = persistAdminKey(req, res);
+  res.redirect(`/admin/mcp/${encodeURIComponent(s.id)}/tools${keyQuery}`);
+});
+
+// Delete tool
+app.post('/admin/mcp/:id/tools/:toolId/delete', requireAdmin, (req, res) => {
+  const s = getMcpServer(req.params.id);
+  if (!s) return res.status(404).send('MCP server not found');
+  deleteMcpTool(req.params.toolId);
+  const keyQuery = persistAdminKey(req, res);
+  res.redirect(`/admin/mcp/${encodeURIComponent(s.id)}/tools${keyQuery}`);
 });
 
 app.use(buildRuntimeRouter());

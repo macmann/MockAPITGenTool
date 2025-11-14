@@ -1,0 +1,64 @@
+<%
+  const escapeHtml = (value) => String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+  const keyQuery = query?.key ? `?key=${encodeURIComponent(query.key)}` : '';
+  const rows = (servers || []).map((server) => {
+    const statusBadge = Number(server.is_enabled) ? '<span class="success">Enabled</span>' : '<span class="muted">Disabled</span>';
+    const description = server.description ? `<div class="muted" style="margin-top: 0.35rem;">${escapeHtml(server.description)}</div>` : '';
+    const editHref = `/admin/mcp/${encodeURIComponent(server.id)}${keyQuery}`;
+    const toolsHref = `/admin/mcp/${encodeURIComponent(server.id)}/tools${keyQuery}`;
+    const toolCount = Number.isFinite(Number(server.tool_count)) ? Number(server.tool_count) : 0;
+    const toolLabel = toolCount === 1 ? 'tool' : 'tools';
+    return `
+      <tr>
+        <td>
+          <strong>${escapeHtml(server.name || 'Untitled server')}</strong>
+          ${description}
+        </td>
+        <td><code>${escapeHtml(server.base_url || '')}</code></td>
+        <td>${statusBadge}</td>
+        <td>${toolCount} ${toolLabel}</td>
+        <td class="right" style="white-space: nowrap;">
+          <a class="secondary" href="${editHref}">Edit</a>
+          <a class="secondary" href="${toolsHref}">Tools</a>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  const body = `
+    <section>
+      <header class="flex" style="justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
+        <div>
+          <h2 style="margin-bottom: 0.25rem;">MCP Servers</h2>
+          <p class="muted" style="margin: 0;">Connect Model Context Protocol servers and attach their tools to your mock endpoints. Include <code>?key=${escapeHtml(query?.key || '')}</code> in links to stay logged in.</p>
+        </div>
+        <a class="button" href="/admin/mcp/new${keyQuery}">+ New MCP Server</a>
+      </header>
+      <table role="grid">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Base URL</th>
+            <th>Status</th>
+            <th>Tools</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows || `
+            <tr>
+              <td colspan="5" class="muted">No MCP servers yet. Add one to start attaching tools.</td>
+            </tr>
+          `}
+        </tbody>
+      </table>
+    </section>
+  `;
+%>
+<%- include('layout', { title: 'MCP Servers', body }) %>
