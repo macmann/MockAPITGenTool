@@ -28,6 +28,11 @@ import {
   upsertMcpTool,
   deleteMcpTool
 } from './db.js';
+import {
+  getMcpServerRuntimeStatus,
+  startMcpServerRuntime,
+  stopMcpServerRuntime
+} from './mcp-process-manager.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -94,6 +99,26 @@ function endpointDefaults() {
 function persistAdminKey(req, res) {
   const key = req.query.key || req.body?.key || res?.locals?.adminKey;
   return key ? `?key=${encodeURIComponent(key)}` : '';
+}
+
+function getAdminKeyValue(req, res) {
+  return req.query.key || req.body?.key || res?.locals?.adminKey || '';
+}
+
+function buildAdminRedirect(path, req, res, extras = {}) {
+  const params = new URLSearchParams();
+  const adminKey = getAdminKeyValue(req, res);
+  if (adminKey) {
+    params.set('key', adminKey);
+  }
+
+  for (const [k, v] of Object.entries(extras)) {
+    if (v === undefined || v === null) continue;
+    params.set(k, String(v));
+  }
+
+  const search = params.toString();
+  return `${path}${search ? `?${search}` : ''}`;
 }
 
 function extractPathParams(pathPattern) {
@@ -596,13 +621,57 @@ app.get('/admin/logs/:logId', requireAdmin, (req, res) => {
   res.render('admin_log_detail', { log, query: req.query });
 });
 
+function buildMcpListFlash(query, servers) {
+  const status = query?.status;
+  if (!status) {
+    return { message: null, type: null };
+  }
+
+  const serverId = query.server;
+  const serverName = servers.find((s) => s.id === serverId)?.name || serverId || 'MCP server';
+
+  switch (status) {
+    case 'started':
+      return { message: `Started MCP server "${serverName}".`, type: 'success' };
+    case 'stopped':
+      return { message: `Sent stop signal to MCP server "${serverName}".`, type: 'success' };
+    case 'already-running':
+      return { message: `MCP server "${serverName}" is already running.`, type: 'info' };
+    case 'not-running':
+      return { message: `MCP server "${serverName}" is not currently running.`, type: 'info' };
+    case 'error': {
+      const detail = query.message ? String(query.message) : 'An unexpected error occurred.';
+      return {
+        message: `Unable to manage MCP server "${serverName}": ${detail}`,
+        type: 'error'
+      };
+    }
+    default:
+      return { message: null, type: null };
+  }
+}
+
 // MCP servers list
 app.get('/admin/mcp', requireAdmin, (req, res) => {
   const servers = listMcpServers().map((server) => ({
     ...server,
     tool_count: listMcpTools(server.id).length
   }));
-  res.render('admin_mcp_list', { servers, query: req.query });
+  const statuses = {};
+  for (const server of servers) {
+    statuses[server.id] = getMcpServerRuntimeStatus(server.id);
+  }
+
+  const { message: statusMessage, type: statusType } = buildMcpListFlash(req.query, servers);
+
+  res.render('admin_mcp_list', {
+    servers,
+    query: req.query,
+    statuses,
+    statusMessage,
+    statusType,
+    adminKey: getAdminKeyValue(req, res)
+  });
 });
 
 // New MCP server form
@@ -649,6 +718,108 @@ app.post('/admin/mcp/:id/delete', requireAdmin, (req, res) => {
   deleteMcpServer(req.params.id);
   const keyQuery = persistAdminKey(req, res);
   res.redirect(`/admin/mcp${keyQuery}`);
+});
+
+app.post('/admin/mcp/:id/start', requireAdmin, (req, res) => {
+  const serverRecord = getMcpServer(req.params.id);
+  if (!serverRecord) {
+    return res.redirect(
+      buildAdminRedirect('/admin/mcp', req, res, {
+        status: 'error',
+        server: req.params.id,
+        message: 'Server not found.'
+      })
+    );
+  }
+
+  if (!serverRecord.is_enabled) {
+    return res.redirect(
+      buildAdminRedirect('/admin/mcp', req, res, {
+        status: 'error',
+        server: serverRecord.id,
+        message: 'Server is disabled.'
+      })
+    );
+  }
+
+  try {
+    const result = startMcpServerRuntime(serverRecord);
+    if (result.alreadyRunning) {
+      return res.redirect(
+        buildAdminRedirect('/admin/mcp', req, res, {
+          status: 'already-running',
+          server: serverRecord.id
+        })
+      );
+    }
+
+    return res.redirect(
+      buildAdminRedirect('/admin/mcp', req, res, {
+        status: 'started',
+        server: serverRecord.id
+      })
+    );
+  } catch (err) {
+    console.error('Failed to start MCP server runtime', err);
+    return res.redirect(
+      buildAdminRedirect('/admin/mcp', req, res, {
+        status: 'error',
+        server: serverRecord.id,
+        message: err?.message || 'Failed to start MCP server.'
+      })
+    );
+  }
+});
+
+app.post('/admin/mcp/:id/stop', requireAdmin, (req, res) => {
+  const serverRecord = getMcpServer(req.params.id);
+  if (!serverRecord) {
+    return res.redirect(
+      buildAdminRedirect('/admin/mcp', req, res, {
+        status: 'error',
+        server: req.params.id,
+        message: 'Server not found.'
+      })
+    );
+  }
+
+  try {
+    const result = stopMcpServerRuntime(serverRecord.id);
+    if (result.code === 'signal-failed') {
+      return res.redirect(
+        buildAdminRedirect('/admin/mcp', req, res, {
+          status: 'error',
+          server: serverRecord.id,
+          message: 'Unable to send stop signal.'
+        })
+      );
+    }
+
+    if (result.code === 'not-running' || result.code === 'not-found') {
+      return res.redirect(
+        buildAdminRedirect('/admin/mcp', req, res, {
+          status: 'not-running',
+          server: serverRecord.id
+        })
+      );
+    }
+
+    return res.redirect(
+      buildAdminRedirect('/admin/mcp', req, res, {
+        status: 'stopped',
+        server: serverRecord.id
+      })
+    );
+  } catch (err) {
+    console.error('Failed to stop MCP server runtime', err);
+    return res.redirect(
+      buildAdminRedirect('/admin/mcp', req, res, {
+        status: 'error',
+        server: serverRecord.id,
+        message: err?.message || 'Failed to stop MCP server.'
+      })
+    );
+  }
 });
 
 // Manage tools for an MCP server

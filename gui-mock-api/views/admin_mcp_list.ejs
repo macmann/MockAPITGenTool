@@ -2,6 +2,10 @@
 <h2>MCP Servers</h2>
 <p class="muted">Configure MCP servers that expose selected mock endpoints as tools.</p>
 
+<% if (statusMessage) { %>
+  <div class="flash <%= statusType ? `flash-${statusType}` : '' %>"><%= statusMessage %></div>
+<% } %>
+
 <p>
   <a class="button" href="/admin/mcp/new?key=<%= encodeURIComponent(query.key||'') %>">+ New MCP Server</a>
   <a class="button secondary" href="/admin?key=<%= encodeURIComponent(query.key||'') %>">Back to endpoints</a>
@@ -12,6 +16,7 @@
     <tr>
       <th>Name</th>
       <th>Base URL</th>
+      <th>Status</th>
       <th>Enabled</th>
       <th></th>
     </tr>
@@ -21,10 +26,44 @@
       <tr>
         <td><strong><%= s.name %></strong><br/><span class="muted"><%= s.description || '' %></span></td>
         <td><code><%= s.base_url || '' %></code></td>
+        <td>
+          <% const status = statuses && statuses[s.id] ? statuses[s.id] : { state: 'idle' }; %>
+          <% if (status.state === 'running') { %>
+            <strong>Running</strong>
+          <% } else if (status.state === 'stopping') { %>
+            <strong>Stopping</strong>
+          <% } else if (status.state === 'stopped') { %>
+            <strong>Stopped</strong>
+          <% } else if (status.state === 'error') { %>
+            <strong>Error</strong>
+          <% } else { %>
+            <strong>Not running</strong>
+          <% } %>
+          <% if (status.pid) { %>
+            <br/><span class="muted">PID <%= status.pid %></span>
+          <% } %>
+          <% if (typeof status.exitCode !== 'undefined' && status.exitCode !== null) { %>
+            <br/><span class="muted">Exit code <%= status.exitCode %></span>
+          <% } %>
+          <% if (status.signal) { %>
+            <br/><span class="muted">Signal <%= status.signal %></span>
+          <% } %>
+          <% if (status.error) { %>
+            <br/><span class="muted">Error: <%= status.error %></span>
+          <% } %>
+        </td>
         <td><%= s.is_enabled ? 'Yes' : 'No' %></td>
         <td class="right">
-          <a class="button button-outline" href="/admin/mcp/<%= s.id %>?key=<%= encodeURIComponent(query.key||'') %>">Edit</a>
-          <a class="button button-outline" href="/admin/mcp/<%= s.id %>/tools?key=<%= encodeURIComponent(query.key||'') %>">Tools</a>
+          <div class="action-buttons">
+            <a class="button button-outline" href="/admin/mcp/<%= s.id %>?key=<%= encodeURIComponent(query.key||'') %>">Edit</a>
+            <a class="button button-outline" href="/admin/mcp/<%= s.id %>/tools?key=<%= encodeURIComponent(query.key||'') %>">Tools</a>
+            <form method="post" action="/admin/mcp/<%= s.id %>/start?key=<%= encodeURIComponent(query.key||'') %>">
+              <button class="button button-outline" type="submit" <%= (!s.is_enabled || status.state === 'running' || status.state === 'stopping') ? 'disabled' : '' %>>Start</button>
+            </form>
+            <form method="post" action="/admin/mcp/<%= s.id %>/stop?key=<%= encodeURIComponent(query.key||'') %>">
+              <button class="button button-outline contrast" type="submit" <%= (status.state !== 'running' && status.state !== 'stopping') ? 'disabled' : '' %>>Stop</button>
+            </form>
+          </div>
         </td>
       </tr>
     <% } %>
