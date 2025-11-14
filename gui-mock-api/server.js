@@ -33,6 +33,7 @@ import {
   startMcpServerRuntime,
   stopMcpServerRuntime
 } from './mcp-process-manager.js';
+import { mountMcp } from '../mcp-server.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -49,6 +50,26 @@ app.use(morgan('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use('/public', express.static(path.join(__dirname, 'public')));
+
+const isMcpEnabled = process.env.MCP_SERVER_ENABLED === 'true';
+if (isMcpEnabled) {
+  const mockBaseUrl =
+    process.env.MOCK_BASE_URL ||
+    process.env.RENDER_EXTERNAL_URL ||
+    '';
+
+  try {
+    mountMcp(app, {
+      serverId: process.env.MCP_SERVER_ID || 'default-mcp',
+      mockBaseUrl: mockBaseUrl || undefined,
+      basePath: '/mcp'
+    });
+  } catch (err) {
+    console.error('[MCP] Failed to mount MCP router:', err?.message || err);
+  }
+} else {
+  console.log('[MCP] Disabled (set MCP_SERVER_ENABLED=true to enable).');
+}
 
 function requireAdmin(req, res, next) {
   if (!ADMIN_KEY) {
@@ -712,41 +733,31 @@ app.get('/admin/mcp/:id/info', requireAdmin, (req, res) => {
   const baseUrl = sanitizedBaseUrl || derivedBaseUrl;
   const baseUrlSource = sanitizedBaseUrl ? 'configured' : derivedBaseUrl ? 'derived' : 'none';
 
-  const mcpInternalPort = Number(process.env.MCP_PORT || 3030);
   const mcpPublicUrl = (process.env.MCP_PUBLIC_URL || '').trim() || null;
-  const mcpInternalUrlHint = mcpPublicUrl || `http://localhost:${mcpInternalPort}`;
-  const shareBaseUrl = mcpPublicUrl || baseUrl;
+  const mcpUrl =
+    mcpPublicUrl || (baseUrl ? `${baseUrl.replace(/\/+$/, '')}/mcp` : '/mcp');
 
   const authHeader = (s.api_key_header || '').trim();
   const authValue = (s.api_key_value || '').trim();
   const hasAuth = Boolean(authHeader && authValue);
 
   let curlExample = null;
-  const firstTool = tools[0];
-  if (firstTool && shareBaseUrl) {
-    const method = String(firstTool.method || 'GET').toUpperCase();
-    const placeholderPath = String(firstTool.path || '/').replace(/:([A-Za-z0-9_]+)/g, '<$1>');
-    let curlUrl;
-    try {
-      curlUrl = new URL(placeholderPath, shareBaseUrl).toString();
-    } catch (err) {
-      curlUrl = `${shareBaseUrl}${placeholderPath.startsWith('/') ? '' : '/'}${placeholderPath}`;
-    }
-    const curlLines = [`curl -X ${method} '${curlUrl}'`];
+  if (tools.length > 0 && mcpUrl) {
+    const curlLines = [`curl -X POST '${mcpUrl}'`];
     if (hasAuth) {
       curlLines.push(`  -H '${authHeader}: ${authValue}'`);
     }
-    if (['POST', 'PUT', 'PATCH'].includes(method)) {
-      curlLines.push("  -H 'Content-Type: application/json'");
-      curlLines.push("  -d '{\"example\":\"value\"}'");
-    }
+    curlLines.push("  -H 'Content-Type: application/json'");
+    curlLines.push(
+      "  -d '{\"jsonrpc\":\"2.0\",\"id\":\"1\",\"method\":\"tools/list\",\"params\":{}}'"
+    );
     curlExample = curlLines.join(' \\\n');
   }
 
   const infoPayload = {
     id: s.id,
     name: s.name,
-    baseUrl: shareBaseUrl,
+    baseUrl: mcpUrl,
     tools: tools.map((t) => ({
       name: t.name,
       method: String(t.method || '').toUpperCase(),
@@ -757,11 +768,15 @@ app.get('/admin/mcp/:id/info', requireAdmin, (req, res) => {
     infoPayload.authentication = { header: authHeader, value: authValue };
   }
 
-  const connectionCommandParts = [`MCP_SERVER_ID=${s.id}`];
-  if (shareBaseUrl) {
-    connectionCommandParts.push(`MOCK_BASE_URL=${shareBaseUrl}`);
+  const connectionCommandParts = ['MCP_SERVER_ENABLED=true'];
+  connectionCommandParts.push(`MCP_SERVER_ID=${s.id}`);
+  if (baseUrl) {
+    connectionCommandParts.push(`MOCK_BASE_URL=${baseUrl}`);
   }
-  connectionCommandParts.push('node mcp-server.js');
+  if (mcpPublicUrl) {
+    connectionCommandParts.push(`MCP_PUBLIC_URL=${mcpPublicUrl}`);
+  }
+  connectionCommandParts.push('npm start');
   const connectionCommand = connectionCommandParts.join(' ');
 
   res.render('admin_mcp_info', {
@@ -776,9 +791,8 @@ app.get('/admin/mcp/:id/info', requireAdmin, (req, res) => {
     curlExample,
     connectionCommand,
     infoPayload,
-    mcpInternalPort,
-    mcpInternalUrlHint,
-    mcpPublicUrl
+    mcpPublicUrl,
+    mcpUrl
   });
 });
 

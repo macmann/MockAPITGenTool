@@ -2,10 +2,16 @@
 <p class="muted">Provide this information to trusted third parties that need to integrate with this MCP server.</p>
 
 <section>
-  <p>This MCP server runs inside the same process as your Mock API on port <code><%= mcpInternalPort %></code>.</p>
-  <p class="muted">Suggested MCP URL: <code><%= mcpInternalUrlHint %></code></p>
+  <p>
+    <strong>MCP endpoint URL:</strong>
+    <code><%= mcpUrl %></code>
+  </p>
   <% if (mcpPublicUrl) { %>
-    <p><strong>Public MCP URL:</strong> <code><%= mcpPublicUrl %></code></p>
+    <p class="muted">Overridden via <code>MCP_PUBLIC_URL</code>.</p>
+  <% } else if (baseUrl) { %>
+    <p class="muted">Derived from the base URL plus <code>/mcp</code>.</p>
+  <% } else { %>
+    <p class="muted">No base URL configured; local requests can use <code>/mcp</code>.</p>
   <% } %>
 </section>
 

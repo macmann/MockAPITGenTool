@@ -107,16 +107,29 @@ services:
       - key: DB_FILE
         value: mockapis.db
 
-# Running MCP server on the same Render instance
+## MCP over path on the same instance
 
-To run the MCP server alongside the Mock API UI in a single Render instance, use a start command similar to:
+When `MCP_SERVER_ENABLED=true`, the MCP bridge is mounted on the same Express app at `/mcp`.
+
+On Render, you can start everything with:
 
 ```bash
 MCP_SERVER_ENABLED=true \
 MCP_SERVER_ID=MCPTesT \
 MOCK_BASE_URL=https://brillar-api-tool.onrender.com \
-MCP_PORT=3030 \
 npm start
 ```
 
-The MCP server runs inside the same Node.js process as the web UI and listens on `MCP_PORT` (default `3030`) within the container. When you expose the MCP server through a separate service or proxy, set `MCP_PUBLIC_URL` so the MCP info page shows the correct URL to share with external MCP clients.
+The MCP endpoint URL to give to 3rd party clients is:
+
+```
+https://<your-host>/mcp
+```
+
+If you want to be explicit, you can set:
+
+```
+MCP_PUBLIC_URL=https://brillar-api-tool.onrender.com/mcp
+```
+
+and surface that in the MCP Server Info page.
