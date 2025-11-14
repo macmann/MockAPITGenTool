@@ -39,12 +39,15 @@
             <a class="button button-outline" href="/admin/mcp/<%= s.id %>/info?key=<%= encodeURIComponent(query?.key || '') %>">Info</a>
             <a class="button button-outline" href="/admin/mcp/<%= s.id %>?key=<%= encodeURIComponent(query?.key || '') %>">Edit</a>
             <a class="button button-outline" href="/admin/mcp/<%= s.id %>/tools?key=<%= encodeURIComponent(query?.key || '') %>">Tools</a>
-            <form method="post" action="/admin/mcp/<%= s.id %>/start?key=<%= encodeURIComponent(query?.key || '') %>">
-              <button class="button button-outline" type="submit" <%= s.is_enabled ? 'disabled' : '' %>>Enable</button>
-            </form>
-            <form method="post" action="/admin/mcp/<%= s.id %>/stop?key=<%= encodeURIComponent(query?.key || '') %>">
-              <button class="button button-outline contrast" type="submit" <%= s.is_enabled ? '' : 'disabled' %>>Disable</button>
-            </form>
+            <% if (s.is_enabled) { %>
+              <form method="post" action="/admin/mcp/<%= s.id %>/stop?key=<%= encodeURIComponent(query?.key || '') %>">
+                <button class="button button-outline contrast" type="submit">Disable</button>
+              </form>
+            <% } else { %>
+              <form method="post" action="/admin/mcp/<%= s.id %>/start?key=<%= encodeURIComponent(query?.key || '') %>">
+                <button class="button button-outline" type="submit">Enable</button>
+              </form>
+            <% } %>
           </div>
         </td>
       </tr>
