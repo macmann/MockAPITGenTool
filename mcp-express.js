@@ -162,14 +162,14 @@ function previewPayload(x) {
 }
 
 export function createMcpRouter(options = {}) {
-  const serverId = options.serverId || process.env.MCP_SERVER_ID;
+  const { serverId, mockBaseUrl } = options;
   if (!serverId) {
     throw new Error('MCP server ID is required to mount MCP routes');
   }
 
   const { server, resolvedMockBaseUrl } = createMcpServer({
     serverId,
-    mockBaseUrl: options.mockBaseUrl
+    mockBaseUrl
   });
 
   const router = express.Router();
