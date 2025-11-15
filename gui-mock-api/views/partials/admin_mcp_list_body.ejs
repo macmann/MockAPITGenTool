@@ -16,7 +16,6 @@
       <th>Name</th>
       <th>Base URL</th>
       <th>Status</th>
-      <th>Enabled</th>
       <th></th>
     </tr>
   </thead>
@@ -26,26 +25,24 @@
         <td><strong><%= s.name %></strong><br/><span class="muted"><%= s.description || '' %></span></td>
         <td><code><%= s.base_url || '' %></code></td>
         <td>
-          <% const status = statuses && statuses[s.id] ? statuses[s.id] : { state: 'disabled' }; %>
-          <% if (status.state === 'enabled') { %>
-            <strong>Enabled</strong><br/><span class="muted">Mounted at /mcp</span>
+          <% if (s.is_enabled) { %>
+            <strong>Mounted at /mcp</strong>
           <% } else { %>
             <strong>Disabled</strong>
           <% } %>
         </td>
-        <td><%= s.is_enabled ? 'Yes' : 'No' %></td>
         <td class="right">
           <div class="action-buttons">
             <a class="button button-outline" href="/admin/mcp/<%= s.id %>/info?key=<%= encodeURIComponent(query?.key || '') %>">Info</a>
             <a class="button button-outline" href="/admin/mcp/<%= s.id %>?key=<%= encodeURIComponent(query?.key || '') %>">Edit</a>
             <a class="button button-outline" href="/admin/mcp/<%= s.id %>/tools?key=<%= encodeURIComponent(query?.key || '') %>">Tools</a>
             <% if (s.is_enabled) { %>
-              <form method="post" action="/admin/mcp/<%= s.id %>/stop?key=<%= encodeURIComponent(query?.key || '') %>">
-                <button class="button button-outline contrast" type="submit">Disable</button>
+              <form method="post" action="/admin/mcp/<%= s.id %>/disable?key=<%= encodeURIComponent(query?.key || '') %>">
+                <button class="contrast" type="submit">Disable</button>
               </form>
             <% } else { %>
-              <form method="post" action="/admin/mcp/<%= s.id %>/start?key=<%= encodeURIComponent(query?.key || '') %>">
-                <button class="button button-outline" type="submit">Enable</button>
+              <form method="post" action="/admin/mcp/<%= s.id %>/enable?key=<%= encodeURIComponent(query?.key || '') %>">
+                <button class="primary" type="submit">Enable</button>
               </form>
             <% } %>
           </div>
