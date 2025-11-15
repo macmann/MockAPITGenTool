@@ -38,6 +38,18 @@
 </form>
 
 <% if (s.id) { %>
+  <div class="action-buttons" style="margin-top:1rem; gap:0.5rem;">
+    <% if (s.is_enabled) { %>
+      <form method="post" action="/admin/mcp/<%= s.id %>/disable?key=<%= encodeURIComponent(query?.key || '') %>">
+        <button class="contrast" type="submit">Disable</button>
+      </form>
+    <% } else { %>
+      <form method="post" action="/admin/mcp/<%= s.id %>/enable?key=<%= encodeURIComponent(query?.key || '') %>">
+        <button class="primary" type="submit">Enable</button>
+      </form>
+    <% } %>
+  </div>
+
   <form method="post" action="/admin/mcp/<%= s.id %>/delete?key=<%= encodeURIComponent(query?.key || '') %>" style="margin-top:1rem;" onsubmit="return confirm('Delete this MCP server?');">
     <button class="button contrast" type="submit">Delete</button>
   </form>
