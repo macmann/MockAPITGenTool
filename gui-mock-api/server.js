@@ -466,7 +466,20 @@ function buildOpenApiDocument(endpoint, req) {
 }
 
 app.get('/', (req, res) => {
-  res.redirect('/admin');
+  const endpoints = allEndpoints();
+  const mcpServers = listMcpServers();
+  const adminKeyValue = getAdminKeyValue(req, res);
+
+  res.render('home', {
+    title: 'Brillar API Tool',
+    adminKey: adminKeyValue,
+    stats: {
+      endpoints: endpoints.length,
+      mcpServers: mcpServers.length
+    },
+    featuredEndpoints: endpoints.slice(0, 3),
+    featuredServers: mcpServers.slice(0, 3)
+  });
 });
 
 function resolveNextPath(rawNext = '/admin') {

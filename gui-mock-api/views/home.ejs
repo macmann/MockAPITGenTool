@@ -1,0 +1,317 @@
+<%
+  const escapeHtml = (value) => String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+  const keyQuery = adminKey ? `?key=${encodeURIComponent(adminKey)}` : '';
+  const endpointCards = (featuredEndpoints || []).map((endpoint) => `
+    <li>
+      <div class="card-pill">
+        <div class="card-pill__icon" aria-hidden="true">🔀</div>
+        <div>
+          <div class="card-pill__title">${escapeHtml(endpoint.name || endpoint.id)}</div>
+          <div class="card-pill__meta"><code>${escapeHtml(endpoint.method || 'GET')}</code> <span>at</span> <code>${escapeHtml(endpoint.path || '/')}</code></div>
+        </div>
+      </div>
+    </li>
+  `).join('');
+
+  const mcpCards = (featuredServers || []).map((server) => `
+    <li>
+      <div class="card-pill">
+        <div class="card-pill__icon" aria-hidden="true">🛰️</div>
+        <div>
+          <div class="card-pill__title">${escapeHtml(server.name || server.id)}</div>
+          <div class="card-pill__meta">${server.is_enabled ? '<span class="status status--success">Enabled</span>' : '<span class="status status--muted">Disabled</span>'}</div>
+        </div>
+      </div>
+    </li>
+  `).join('');
+
+  const body = `
+    <style>
+      .home-hero {
+        position: relative;
+        overflow: hidden;
+        background: radial-gradient(circle at top left, rgba(13, 110, 253, 0.25), transparent 60%),
+          radial-gradient(circle at bottom right, rgba(102, 16, 242, 0.2), transparent 55%),
+          #ffffff;
+        border-radius: 1.75rem;
+        padding: 3rem clamp(1.5rem, 4vw, 3rem);
+        margin-bottom: 2.5rem;
+        box-shadow: 0 1.5rem 3.5rem rgba(13, 110, 253, 0.1);
+      }
+
+      .home-hero h2 {
+        font-size: clamp(2.2rem, 4vw, 3rem);
+        margin-bottom: 0.5rem;
+      }
+
+      .home-hero p {
+        max-width: 48rem;
+        font-size: 1.05rem;
+        line-height: 1.6;
+        color: #4c566a;
+      }
+
+      .hero-actions {
+        margin-top: 1.75rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+      }
+
+      .hero-actions .secondary {
+        --pico-color: #0d6efd;
+        border: 1px solid rgba(13, 110, 253, 0.35);
+        background: rgba(255, 255, 255, 0.8);
+      }
+
+      .home-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 1.25rem;
+        margin-bottom: 2.5rem;
+      }
+
+      .stat-card {
+        background: linear-gradient(135deg, rgba(13, 110, 253, 0.08), rgba(13, 110, 253, 0));
+        border: 1px solid rgba(13, 110, 253, 0.12);
+        border-radius: 1.25rem;
+        padding: 1.5rem;
+        text-align: left;
+        box-shadow: 0 1rem 2.25rem rgba(13, 110, 253, 0.08);
+      }
+
+      .stat-card h3 {
+        font-size: 0.95rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #6c757d;
+        margin-bottom: 0.5rem;
+      }
+
+      .stat-card strong {
+        font-size: 2.5rem;
+        line-height: 1;
+        display: block;
+        color: #0d1b2a;
+      }
+
+      .home-sections {
+        display: grid;
+        gap: 2rem;
+      }
+
+      .home-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 1.5rem;
+      }
+
+      .home-card {
+        background: #fff;
+        border-radius: 1.5rem;
+        padding: 1.75rem;
+        position: relative;
+        overflow: hidden;
+        border: 1px solid rgba(13, 110, 253, 0.12);
+        box-shadow: 0 1.25rem 2.5rem rgba(13, 110, 253, 0.08);
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+      }
+
+      .home-card__icon {
+        font-size: 2rem;
+      }
+
+      .home-card__heading {
+        font-size: 1.35rem;
+        margin: 0;
+        color: #0d1b2a;
+      }
+
+      .home-card__description {
+        color: #4c566a;
+        margin: 0;
+      }
+
+      .home-card ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 0.5rem;
+      }
+
+      .card-pill {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 0.75rem;
+        padding: 0.65rem 0.9rem;
+        background: rgba(13, 110, 253, 0.06);
+        border-radius: 1rem;
+        align-items: center;
+      }
+
+      .card-pill__icon {
+        width: 2.5rem;
+        height: 2.5rem;
+        display: grid;
+        place-items: center;
+        background: #fff;
+        border-radius: 50%;
+        box-shadow: 0 0.75rem 1.75rem rgba(13, 110, 253, 0.12);
+      }
+
+      .card-pill__title {
+        font-weight: 600;
+      }
+
+      .card-pill__meta {
+        font-size: 0.85rem;
+        color: #4c566a;
+      }
+
+      .status {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .status--success {
+        color: #0f5132;
+      }
+
+      .status--muted {
+        color: #6c757d;
+      }
+
+      .home-card__footer {
+        margin-top: auto;
+      }
+
+      .home-card__footer a.button,
+      .hero-actions a.button {
+        box-shadow: 0 0.75rem 2rem rgba(13, 110, 253, 0.25);
+      }
+
+      .home-card__footer a.secondary {
+        border-color: rgba(13, 110, 253, 0.3);
+        color: #0d6efd;
+      }
+
+      @media (max-width: 720px) {
+        .home-hero {
+          padding: 2.5rem 1.5rem;
+        }
+
+        .home-card {
+          padding: 1.5rem;
+        }
+      }
+    </style>
+
+    <section class="home-hero">
+      <h2>Design. Mock. Validate.</h2>
+      <p>
+        Brillar API Tool streamlines how you experiment with mock endpoints and Model Context Protocol (MCP)
+        servers. Jump back into your existing routes, wire up MCP integrations, or craft a brand new response in moments.
+      </p>
+      <div class="hero-actions">
+        <a class="button" href="/admin/new${keyQuery}">Create endpoint</a>
+        <a class="secondary" href="/admin${keyQuery}">Browse routes</a>
+      </div>
+    </section>
+
+    <section class="home-stats" aria-label="Quick statistics">
+      <article class="stat-card">
+        <h3>Total Routes</h3>
+        <strong>${stats?.endpoints ?? 0}</strong>
+        <p class="home-card__description">Mock responses ready to test and share.</p>
+      </article>
+      <article class="stat-card">
+        <h3>MCP Servers</h3>
+        <strong>${stats?.mcpServers ?? 0}</strong>
+        <p class="home-card__description">Connected servers powering your tools.</p>
+      </article>
+    </section>
+
+    <section class="home-sections">
+      <div class="home-cards">
+        <article class="home-card">
+          <div class="home-card__icon" aria-hidden="true">🗺️</div>
+          <h3 class="home-card__heading">Routes overview</h3>
+          <p class="home-card__description">
+            Review recently configured mock endpoints and understand what your team can hit right away.
+          </p>
+          <ul aria-label="Featured routes">
+            ${endpointCards || '<li class="muted">No routes yet. Create your first endpoint to see it here.</li>'}
+          </ul>
+          <div class="home-card__footer">
+            <a class="secondary" href="/admin${keyQuery}">Manage all routes</a>
+          </div>
+        </article>
+
+        <article class="home-card">
+          <div class="home-card__icon" aria-hidden="true">🌐</div>
+          <h3 class="home-card__heading">MCP servers</h3>
+          <p class="home-card__description">
+            Keep an eye on MCP connections and jump in to configure new tools or troubleshoot quickly.
+          </p>
+          <ul aria-label="Featured MCP servers">
+            ${mcpCards || '<li class="muted">No MCP servers connected yet. Add one to get started.</li>'}
+          </ul>
+          <div class="home-card__footer">
+            <a class="secondary" href="/admin/mcp${keyQuery}">Configure MCP servers</a>
+          </div>
+        </article>
+
+        <article class="home-card">
+          <div class="home-card__icon" aria-hidden="true">⚡</div>
+          <h3 class="home-card__heading">Create an endpoint</h3>
+          <p class="home-card__description">
+            Define a new route in minutes—set the method, path, headers, and response payload with powerful templating.
+          </p>
+          <ul aria-label="Steps to create an endpoint">
+            <li>
+              <div class="card-pill">
+                <div class="card-pill__icon" aria-hidden="true">1</div>
+                <div>
+                  <div class="card-pill__title">Choose your method and path</div>
+                  <div class="card-pill__meta">Support for standard HTTP verbs and dynamic params.</div>
+                </div>
+              </div>
+            </li>
+            <li>
+              <div class="card-pill">
+                <div class="card-pill__icon" aria-hidden="true">2</div>
+                <div>
+                  <div class="card-pill__title">Craft the perfect response</div>
+                  <div class="card-pill__meta">Return JSON, text, or handlebars templates with ease.</div>
+                </div>
+              </div>
+            </li>
+            <li>
+              <div class="card-pill">
+                <div class="card-pill__icon" aria-hidden="true">3</div>
+                <div>
+                  <div class="card-pill__title">Share instantly</div>
+                  <div class="card-pill__meta">Collaborators can call the mock API immediately.</div>
+                </div>
+              </div>
+            </li>
+          </ul>
+          <div class="home-card__footer">
+            <a class="button" href="/admin/new${keyQuery}">Launch builder</a>
+          </div>
+        </article>
+      </div>
+    </section>
+  `;
+%>
+<%- include('layout', { title, body, adminKey }) %>
