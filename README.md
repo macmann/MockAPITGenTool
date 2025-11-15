@@ -109,13 +109,12 @@ services:
 
 ## MCP over path on the same instance
 
-When `MCP_SERVER_ENABLED=true`, the MCP bridge is mounted on the same Express app at `/mcp`.
+When `MCP_SERVER_ENABLED=true`, the MCP bridge is mounted on the same Express app at `/mcp/:slug` for each enabled MCP server. The legacy `/mcp` path will fall back to the first enabled server (or a configured default slug).
 
 On Render, you can start everything with:
 
 ```bash
 MCP_SERVER_ENABLED=true \
-MCP_SERVER_ID=MCPTesT \
 MOCK_BASE_URL=https://brillar-api-tool.onrender.com \
 npm start
 ```
@@ -123,7 +122,7 @@ npm start
 The MCP endpoint URL to give to 3rd party clients is:
 
 ```
-https://<your-host>/mcp
+https://<your-host>/mcp/<your-slug>
 ```
 
 If you want to be explicit, you can set:
@@ -132,4 +131,4 @@ If you want to be explicit, you can set:
 MCP_PUBLIC_URL=https://brillar-api-tool.onrender.com/mcp
 ```
 
-and surface that in the MCP Server Info page.
+and the admin UI will append the MCP server slug when showing the final connection URL.

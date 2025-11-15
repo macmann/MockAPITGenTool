@@ -20,13 +20,16 @@ import {
   getLog,
   listMcpServers,
   getMcpServer,
+  findMcpServerBySlug,
+  findDefaultEnabledMcpServer,
   upsertMcpServer,
   deleteMcpServer,
   setMcpServerEnabled,
   listMcpTools,
   listMcpToolsWithEndpoints,
   upsertMcpTool,
-  deleteMcpTool
+  deleteMcpTool,
+  slugifyMcpSlug
 } from './db.js';
 import { createMcpRouter } from '../mcp-express.js';
 
@@ -63,7 +66,7 @@ function previewPayloadForLog(payload) {
   }
 }
 
-const mcpMountRouter = express.Router();
+const mcpRouter = createMcpRouter();
 
 app.use('/mcp', (req, res, next) => {
   const origEnd = res.end;
@@ -138,43 +141,84 @@ app.use('/mcp', (err, req, res, next) => {
 
 app.use(express.urlencoded({ extended: false }));
 
-app.use('/mcp', mcpMountRouter);
-
-function clearRouterStack(router) {
-  if (router && Array.isArray(router.stack)) {
-    router.stack.length = 0;
-  }
-}
-
-function refreshMountedMcpRouters() {
-  clearRouterStack(mcpMountRouter);
-
-  const servers = listMcpServers().filter((server) => Boolean(server?.is_enabled));
-
-  if (servers.length === 0) {
-    console.log('[MCP] No enabled MCP servers; /mcp will return 404');
-    mcpMountRouter.use((req, res) => {
-      res.status(404).json({ error: 'MCP server not enabled' });
-    });
-    return;
-  }
-
-  for (const serverRecord of servers) {
-    try {
-      const router = createMcpRouter({
-        serverId: serverRecord.id
-      });
-      mcpMountRouter.use(router);
-      console.log(`[MCP] Mounted at /mcp (serverId=${serverRecord.id})`);
-    } catch (err) {
-      console.error(`[MCP] Failed to mount MCP server ${serverRecord?.id}`, err);
+function sendMcpJsonRpcError(res, status, code, message) {
+  return res.status(status).json({
+    jsonrpc: '2.0',
+    id: null,
+    error: {
+      code,
+      message
     }
-  }
-
-  mcpMountRouter.use((req, res) => {
-    res.status(404).json({ error: 'Not found' });
   });
 }
+
+function resolveMcpServerForSlug(slug) {
+  const normalized = slugifyMcpSlug(slug);
+  if (!normalized) {
+    return null;
+  }
+  const server = findMcpServerBySlug(normalized);
+  if (!server || !server.is_enabled) {
+    return null;
+  }
+  return server;
+}
+
+function resolveDefaultMcpServer() {
+  const configuredSlug = slugifyMcpSlug(process.env.MCP_DEFAULT_SLUG || '');
+  if (configuredSlug) {
+    const configuredServer = resolveMcpServerForSlug(configuredSlug);
+    if (configuredServer) {
+      return configuredServer;
+    }
+  }
+  return findDefaultEnabledMcpServer();
+}
+
+function delegateToMcpRouter(req, res, next, server) {
+  req.mcpServer = server;
+  return mcpRouter(req, res, next);
+}
+
+function handleMcpNotFound(res, slug) {
+  console.log('[MCP] No server for slug', { slug: slugifyMcpSlug(slug) || slug });
+  return sendMcpJsonRpcError(
+    res,
+    404,
+    -32004,
+    `MCP server not found or disabled for slug: ${slugifyMcpSlug(slug) || slug}`
+  );
+}
+
+app.use('/mcp/:slug', (req, res, next) => {
+  try {
+    const server = resolveMcpServerForSlug(req.params.slug);
+    if (!server) {
+      return handleMcpNotFound(res, req.params.slug);
+    }
+    return delegateToMcpRouter(req, res, next, server);
+  } catch (err) {
+    console.error('[MCP] Error resolving slug', err);
+    return sendMcpJsonRpcError(res, 500, -32603, 'Internal MCP server error');
+  }
+});
+
+function handleDefaultMcpRequest(req, res, next) {
+  try {
+    const server = resolveDefaultMcpServer();
+    if (!server) {
+      console.log('[MCP] No default MCP server available for /mcp');
+      return sendMcpJsonRpcError(res, 404, -32004, 'No default MCP server is enabled.');
+    }
+    return delegateToMcpRouter(req, res, next, server);
+  } catch (err) {
+    console.error('[MCP] Error resolving default MCP server', err);
+    return sendMcpJsonRpcError(res, 500, -32603, 'Internal MCP server error');
+  }
+}
+
+app.all('/mcp', handleDefaultMcpRequest);
+app.all('/mcp/', handleDefaultMcpRequest);
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -183,8 +227,6 @@ app.use(helmet());
 app.use(compression());
 app.use(morgan('dev'));
 app.use('/public', express.static(path.join(__dirname, 'public')));
-
-refreshMountedMcpRouters();
 
 
 function requireAdmin(req, res, next) {
@@ -255,6 +297,33 @@ function buildAdminRedirect(path, req, res, extras = {}) {
 
   const search = params.toString();
   return `${path}${search ? `?${search}` : ''}`;
+}
+
+function buildMcpPath(slug) {
+  const normalized = slugifyMcpSlug(slug);
+  return normalized ? `/mcp/${normalized}` : '/mcp';
+}
+
+function appendSlugToBase(base, slug) {
+  if (!base) return null;
+  const trimmedBase = String(base).trim();
+  if (!trimmedBase) return null;
+  const normalizedBase = trimmedBase.replace(/[/]+$/, '');
+  const normalizedSlug = slugifyMcpSlug(slug);
+  if (!normalizedSlug) {
+    return normalizedBase || null;
+  }
+  if (normalizedBase.endsWith(`/mcp/${normalizedSlug}`)) {
+    return normalizedBase;
+  }
+  if (normalizedBase.endsWith('/mcp')) {
+    return `${normalizedBase}/${normalizedSlug}`;
+  }
+  return `${normalizedBase}/mcp/${normalizedSlug}`;
+}
+
+function buildMcpUrl(base, slug) {
+  return appendSlugToBase(base, slug) || buildMcpPath(slug);
 }
 
 function extractPathParams(pathPattern) {
@@ -777,12 +846,14 @@ function buildMcpListFlash(query, servers) {
   }
 
   const serverId = query.server;
-  const serverName = servers.find((s) => s.id === serverId)?.name || serverId || 'MCP server';
+  const serverRecord = servers.find((s) => s.id === serverId);
+  const serverName = serverRecord?.name || serverId || 'MCP server';
+  const serverPath = serverRecord ? buildMcpPath(serverRecord.slug) : '/mcp';
 
   switch (status) {
     case 'enabled':
       return {
-        message: `Enabled MCP server "${serverName}" and mounted it at /mcp.`,
+        message: `Enabled MCP server "${serverName}" at ${serverPath}.`,
         type: 'success'
       };
     case 'disabled':
@@ -804,10 +875,22 @@ function buildMcpListFlash(query, servers) {
 
 // MCP servers list
 app.get('/admin/mcp', requireAdmin, (req, res) => {
-  const servers = listMcpServers().map((server) => ({
-    ...server,
-    tool_count: listMcpTools(server.id).length
-  }));
+  const hostHeader = req.get('host');
+  const derivedBase = hostHeader ? `${req.protocol}://${hostHeader}` : '';
+  const publicBase = (process.env.MCP_PUBLIC_URL || '').trim();
+
+  const servers = listMcpServers().map((server) => {
+    const serverBase = typeof server.base_url === 'string' ? server.base_url.trim() : '';
+    const baseCandidate = publicBase || serverBase || derivedBase;
+    const mcpPath = buildMcpPath(server.slug);
+    const mcpUrl = baseCandidate ? buildMcpUrl(baseCandidate, server.slug) : mcpPath;
+    return {
+      ...server,
+      tool_count: listMcpTools(server.id).length,
+      mcpPath,
+      mcpUrl
+    };
+  });
 
   const { message: statusMessage, type: statusType } = buildMcpListFlash(req.query, servers);
 
@@ -826,13 +909,15 @@ app.get('/admin/mcp/new', requireAdmin, (req, res) => {
     s: {
       id: '',
       name: '',
+      slug: '',
       description: '',
       base_url: 'http://localhost:3000',
       api_key_header: '',
       api_key_value: '',
       is_enabled: 1
     },
-    query: req.query
+    query: req.query,
+    errorMessage: null
   });
 });
 
@@ -840,7 +925,7 @@ app.get('/admin/mcp/new', requireAdmin, (req, res) => {
 app.get('/admin/mcp/:id', requireAdmin, (req, res) => {
   const s = getMcpServer(req.params.id);
   if (!s) return res.status(404).send('MCP server not found');
-  res.render('admin_mcp_edit', { s, query: req.query });
+  res.render('admin_mcp_edit', { s, query: req.query, errorMessage: null });
 });
 
 app.get('/admin/mcp/:id/info', requireAdmin, (req, res) => {
@@ -850,7 +935,7 @@ app.get('/admin/mcp/:id/info', requireAdmin, (req, res) => {
   const tools = listMcpToolsWithEndpoints(s.id);
 
   const storedBaseUrl = typeof s.base_url === 'string' ? s.base_url.trim() : '';
-  const sanitizedBaseUrl = storedBaseUrl ? storedBaseUrl.replace(/\/+$/, '') : '';
+  const sanitizedBaseUrl = storedBaseUrl ? storedBaseUrl.replace(/[/]+$/, '') : '';
   const hostHeader = req.get('host');
   let derivedBaseUrl = '';
   if (hostHeader) {
@@ -859,9 +944,10 @@ app.get('/admin/mcp/:id/info', requireAdmin, (req, res) => {
   const baseUrl = sanitizedBaseUrl || derivedBaseUrl;
   const baseUrlSource = sanitizedBaseUrl ? 'configured' : derivedBaseUrl ? 'derived' : 'none';
 
-  const mcpPublicUrl = (process.env.MCP_PUBLIC_URL || '').trim() || null;
-  const mcpUrl =
-    mcpPublicUrl || (baseUrl ? `${baseUrl.replace(/\/+$/, '')}/mcp` : '/mcp');
+  const rawPublicBase = (process.env.MCP_PUBLIC_URL || '').trim();
+  const mcpPublicUrl = rawPublicBase ? appendSlugToBase(rawPublicBase, s.slug) : null;
+  const mcpPath = buildMcpPath(s.slug);
+  const mcpUrl = mcpPublicUrl || (baseUrl ? buildMcpUrl(baseUrl, s.slug) : mcpPath);
 
   const authHeader = (s.api_key_header || '').trim();
   const authValue = (s.api_key_value || '').trim();
@@ -883,6 +969,8 @@ app.get('/admin/mcp/:id/info', requireAdmin, (req, res) => {
   const infoPayload = {
     id: s.id,
     name: s.name,
+    slug: s.slug,
+    path: mcpPath,
     baseUrl: mcpUrl,
     tools: tools.map((t) => ({
       name: t.name,
@@ -933,31 +1021,47 @@ app.get('/admin/mcp/:id/info', requireAdmin, (req, res) => {
     infoPayload,
     mcpPublicUrl,
     mcpUrl,
+    mcpPath,
     clientConfig
   });
 });
 
 // Save MCP server
 app.post('/admin/mcp/save', requireAdmin, (req, res) => {
-  const body = req.body;
-  const s = upsertMcpServer({
+  const body = req.body || {};
+  const payload = {
     id: body.id || '',
     name: body.name || '',
+    slug: typeof body.slug === 'string' ? body.slug.trim() : '',
     description: body.description || '',
     base_url: body.base_url || '',
     api_key_header: body.api_key_header || '',
     api_key_value: body.api_key_value || '',
     is_enabled: body.is_enabled === 'true' || body.is_enabled === 'on' ? 1 : 0
-  });
-  refreshMountedMcpRouters();
-  const keyQuery = persistAdminKey(req, res);
-  res.redirect(`/admin/mcp/${encodeURIComponent(s.id)}${keyQuery}`);
+  };
+
+  try {
+    const saved = upsertMcpServer(payload);
+    const keyQuery = persistAdminKey(req, res);
+    return res.redirect(`/admin/mcp/${encodeURIComponent(saved.id)}${keyQuery}`);
+  } catch (err) {
+    console.error('Failed to save MCP server', err);
+    const attempted = {
+      ...payload,
+      is_enabled: payload.is_enabled ? 1 : 0
+    };
+    const errorMessage = err?.message || 'Failed to save MCP server.';
+    return res.status(400).render('admin_mcp_edit', {
+      s: attempted,
+      query: req.query,
+      errorMessage
+    });
+  }
 });
 
 // Delete MCP server
 app.post('/admin/mcp/:id/delete', requireAdmin, (req, res) => {
   deleteMcpServer(req.params.id);
-  refreshMountedMcpRouters();
   const keyQuery = persistAdminKey(req, res);
   res.redirect(`/admin/mcp${keyQuery}`);
 });
@@ -976,7 +1080,6 @@ app.post('/admin/mcp/:id/enable', requireAdmin, (req, res) => {
 
   try {
     setMcpServerEnabled(serverRecord.id, true);
-    refreshMountedMcpRouters();
     return res.redirect(
       buildAdminRedirect('/admin/mcp', req, res, {
         status: 'enabled',
@@ -1009,7 +1112,6 @@ app.post('/admin/mcp/:id/disable', requireAdmin, (req, res) => {
 
   try {
     setMcpServerEnabled(serverRecord.id, false);
-    refreshMountedMcpRouters();
     return res.redirect(
       buildAdminRedirect('/admin/mcp', req, res, {
         status: 'disabled',

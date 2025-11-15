@@ -62,6 +62,7 @@ CREATE TABLE IF NOT EXISTS api_logs (
 CREATE TABLE IF NOT EXISTS mcp_servers (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
+  slug TEXT NOT NULL UNIQUE,
   description TEXT,
   base_url TEXT,           -- e.g. http://localhost:3000 or https://brillar-api-tool.onrender.com
   api_key_header TEXT,     -- e.g. x-api-key
@@ -85,6 +86,134 @@ CREATE TABLE IF NOT EXISTS mcp_tools (
 );
 `);
 
+const MCP_SLUG_PATTERN = /^[a-z0-9-]+$/;
+
+export function slugifyMcpSlug(value) {
+  if (value === undefined || value === null) {
+    return '';
+  }
+
+  const normalized = String(value)
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/-{2,}/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+  return normalized;
+}
+
+function fallbackSlugSeed(row) {
+  const rawId = typeof row?.id === 'string' ? row.id : nanoid(6);
+  const sanitizedId = String(rawId)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/-{2,}/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+  return sanitizedId ? `mcp-${sanitizedId}` : `mcp-${nanoid(6).toLowerCase()}`;
+}
+
+function ensureUniqueSlugFromSet(baseSlug, usedSet) {
+  let slug = baseSlug || 'mcp-server';
+  if (!slug) {
+    slug = 'mcp-server';
+  }
+
+  let attempt = slug;
+  let counter = 1;
+  while (usedSet.has(attempt)) {
+    attempt = `${slug}-${counter++}`;
+  }
+
+  usedSet.add(attempt);
+  return attempt;
+}
+
+let getMcpServerBySlugStmt = null;
+let getMcpServerIdBySlugStmt = null;
+
+function ensureMcpSlugSetup() {
+  const columns = db.prepare('PRAGMA table_info(mcp_servers)').all();
+  const hasSlugColumn = columns.some((column) => column.name === 'slug');
+
+  if (!hasSlugColumn) {
+    db.exec('ALTER TABLE mcp_servers ADD COLUMN slug TEXT');
+  }
+
+  const serverRows = db.prepare('SELECT id, name, slug FROM mcp_servers ORDER BY created_at ASC').all();
+  const usedSlugs = new Set();
+  const updateStmt = db.prepare('UPDATE mcp_servers SET slug = ? WHERE id = ?');
+
+  for (const row of serverRows) {
+    const existingSlug = slugifyMcpSlug(row.slug);
+    let candidate = existingSlug || slugifyMcpSlug(row.name);
+
+    if (!candidate) {
+      candidate = slugifyMcpSlug(fallbackSlugSeed(row));
+    }
+
+    if (!candidate || !MCP_SLUG_PATTERN.test(candidate)) {
+      candidate = 'mcp-server';
+    }
+
+    const resolvedSlug = ensureUniqueSlugFromSet(candidate, usedSlugs);
+
+    if (resolvedSlug !== existingSlug || row.slug !== resolvedSlug) {
+      updateStmt.run(resolvedSlug, row.id);
+    }
+  }
+
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_mcp_servers_slug ON mcp_servers(slug)');
+
+  getMcpServerBySlugStmt = db.prepare('SELECT * FROM mcp_servers WHERE slug = ?');
+  getMcpServerIdBySlugStmt = db.prepare('SELECT id FROM mcp_servers WHERE slug = ?');
+}
+
+ensureMcpSlugSetup();
+
+function getSlugRecord(slug) {
+  if (!slug || typeof slug !== 'string') return null;
+  if (!getMcpServerBySlugStmt) return null;
+  return getMcpServerBySlugStmt.get(slug);
+}
+
+function getSlugOwnerId(slug) {
+  if (!slug || typeof slug !== 'string') return null;
+  if (!getMcpServerIdBySlugStmt) return null;
+  const row = getMcpServerIdBySlugStmt.get(slug);
+  return row ? row.id : null;
+}
+
+function slugIsTaken(slug, excludeId) {
+  const ownerId = getSlugOwnerId(slug);
+  if (!ownerId) return false;
+  if (!excludeId) return true;
+  return ownerId !== excludeId;
+}
+
+function generateUniqueMcpSlug(baseSlug, excludeId) {
+  let slug = baseSlug && MCP_SLUG_PATTERN.test(baseSlug) ? baseSlug : slugifyMcpSlug(baseSlug);
+  if (!slug) {
+    slug = 'mcp-server';
+  }
+
+  let attempt = slug;
+  let counter = 1;
+  while (slugIsTaken(attempt, excludeId)) {
+    attempt = `${slug}-${counter++}`;
+  }
+  return attempt;
+}
+
+export function findMcpServerBySlug(slug) {
+  const normalized = slugifyMcpSlug(slug);
+  if (!normalized) return null;
+  const row = getSlugRecord(normalized);
+  return normalizeMcpServer(row);
+}
+
 function normalizeEndpoint(row) {
   if (!row) return null;
   return {
@@ -94,6 +223,15 @@ function normalizeEndpoint(row) {
     enabled: Boolean(row.enabled),
     response_is_json: Boolean(row.response_is_json),
     template_enabled: Boolean(row.template_enabled)
+  };
+}
+
+function normalizeMcpServer(row) {
+  if (!row) return null;
+  return {
+    ...row,
+    slug: slugifyMcpSlug(row.slug),
+    is_enabled: row.is_enabled ? 1 : 0
   };
 }
 
@@ -205,25 +343,57 @@ export function getLog(id) {
 }
 
 export function listMcpServers() {
-  return db.prepare('SELECT * FROM mcp_servers ORDER BY created_at DESC').all();
+  const rows = db.prepare('SELECT * FROM mcp_servers ORDER BY created_at DESC').all();
+  return rows.map(normalizeMcpServer);
 }
 
 export function getMcpServer(id) {
-  return db.prepare('SELECT * FROM mcp_servers WHERE id = ?').get(id);
+  const row = db.prepare('SELECT * FROM mcp_servers WHERE id = ?').get(id);
+  return normalizeMcpServer(row);
 }
 
 export function upsertMcpServer(row) {
   const now = new Date().toISOString();
+  const recordId = row.id && String(row.id).trim() ? row.id : nanoid(12);
+  const baseRecord = {
+    id: recordId,
+    name: row.name || '',
+    description: row.description || '',
+    base_url: row.base_url || '',
+    api_key_header: row.api_key_header || '',
+    api_key_value: row.api_key_value || '',
+    is_enabled: row.is_enabled ? 1 : 0
+  };
+
+  const rawSlugInput = typeof row.slug === 'string' ? row.slug.trim() : '';
+  let slug;
+
+  if (rawSlugInput) {
+    const normalized = slugifyMcpSlug(rawSlugInput);
+    if (!normalized || !MCP_SLUG_PATTERN.test(normalized)) {
+      throw new Error('Slug may only include lowercase letters, digits, or hyphens.');
+    }
+    if (slugIsTaken(normalized, recordId)) {
+      throw new Error('Slug is already in use. Choose a different slug.');
+    }
+    slug = normalized;
+  } else {
+    const nameBasedSlug = slugifyMcpSlug(baseRecord.name) || slugifyMcpSlug(fallbackSlugSeed(baseRecord));
+    slug = generateUniqueMcpSlug(nameBasedSlug, recordId);
+  }
+
+  const payload = { ...baseRecord, slug };
+
   if (!row.id) {
-    row.id = nanoid(12);
     db.prepare(`
-      INSERT INTO mcp_servers (id, name, description, base_url, api_key_header, api_key_value, is_enabled, created_at, updated_at)
-      VALUES (@id, @name, @description, @base_url, @api_key_header, @api_key_value, @is_enabled, @created_at, @updated_at)
-    `).run({ ...row, created_at: now, updated_at: now });
+      INSERT INTO mcp_servers (id, name, slug, description, base_url, api_key_header, api_key_value, is_enabled, created_at, updated_at)
+      VALUES (@id, @name, @slug, @description, @base_url, @api_key_header, @api_key_value, @is_enabled, @created_at, @updated_at)
+    `).run({ ...payload, created_at: now, updated_at: now });
   } else {
     db.prepare(`
       UPDATE mcp_servers
       SET name=@name,
+          slug=@slug,
           description=@description,
           base_url=@base_url,
           api_key_header=@api_key_header,
@@ -231,9 +401,10 @@ export function upsertMcpServer(row) {
           is_enabled=@is_enabled,
           updated_at=@updated_at
       WHERE id=@id
-    `).run({ ...row, updated_at: now });
+    `).run({ ...payload, updated_at: now });
   }
-  return getMcpServer(row.id);
+
+  return getMcpServer(payload.id);
 }
 
 export function deleteMcpServer(id) {
@@ -251,6 +422,15 @@ export function setMcpServerEnabled(id, enabled) {
   ).run(enabled ? 1 : 0, now, id);
 
   return getMcpServer(id);
+}
+
+export function findDefaultEnabledMcpServer() {
+  const row = db
+    .prepare(
+      'SELECT * FROM mcp_servers WHERE is_enabled = 1 ORDER BY created_at ASC LIMIT 1'
+    )
+    .get();
+  return normalizeMcpServer(row);
 }
 
 export function listMcpTools(mcpServerId) {
@@ -311,11 +491,14 @@ export default {
   getLog,
   listMcpServers,
   getMcpServer,
+  findMcpServerBySlug,
+  findDefaultEnabledMcpServer,
   upsertMcpServer,
   deleteMcpServer,
   listMcpTools,
   getMcpTool,
   upsertMcpTool,
   deleteMcpTool,
-  listMcpToolsWithEndpoints
+  listMcpToolsWithEndpoints,
+  slugifyMcpSlug
 };
