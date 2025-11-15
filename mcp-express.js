@@ -164,6 +164,7 @@ export function createMcpRouter(options = {}) {
 
     const rpc = req.body && typeof req.body === 'object' ? req.body : {};
     const { jsonrpc, id, method: rpcMethod, params } = rpc;
+    const hasId = Object.prototype.hasOwnProperty.call(rpc, 'id');
     const responseId = id ?? null;
 
     if (jsonrpc !== '2.0' || typeof rpcMethod !== 'string') {
@@ -182,6 +183,14 @@ export function createMcpRouter(options = {}) {
       typeof params?.protocolVersion === 'string'
         ? params.protocolVersion
         : DEFAULT_PROTOCOL_VERSION;
+
+    if (!hasId) {
+      console.log('[MCP] JSON-RPC notification received', {
+        time: new Date().toISOString(),
+        method: rpcMethod
+      });
+      return res.status(204).end();
+    }
 
     try {
       switch (rpcMethod) {
@@ -207,11 +216,32 @@ export function createMcpRouter(options = {}) {
         }
         case 'tools/list': {
           const tools = buildToolsList(serverId);
+          const resultTools =
+            tools.length > 0
+              ? tools
+              : [
+                  {
+                    name: 'example.echo',
+                    description:
+                      'Example tool that echoes the provided message back to the caller.',
+                    inputSchema: {
+                      type: 'object',
+                      properties: {
+                        message: {
+                          type: 'string',
+                          description: 'Text to echo back in the response.'
+                        }
+                      },
+                      required: ['message'],
+                      additionalProperties: false
+                    }
+                  }
+                ];
           const response = {
             jsonrpc: '2.0',
             id: responseId,
             result: {
-              tools
+              tools: resultTools
             }
           };
           return sendJson(res, 200, response);
