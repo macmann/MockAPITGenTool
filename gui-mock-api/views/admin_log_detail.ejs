@@ -17,27 +17,56 @@
 
   const keyQuery = query.key ? `?key=${encodeURIComponent(query.key)}` : '';
 
+  const statusCode = Number(log.status);
+  let statusBadge = 'status-badge status-badge--muted';
+  if (statusCode >= 200 && statusCode < 300) {
+    statusBadge = 'status-badge status-badge--success';
+  } else if (statusCode >= 500) {
+    statusBadge = 'status-badge status-badge--error';
+  } else if (statusCode >= 400) {
+    statusBadge = 'status-badge status-badge--warn';
+  }
+
   const body = `
-    <section>
-      <header class="flex" style="justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
-        <div>
-          <h2 style="margin-bottom: 0.25rem;">Log ${escapeHtml(log.id)}</h2>
-          <p class="muted" style="margin: 0;">Captured at ${escapeHtml(log.created_at)} &middot; Status ${escapeHtml(log.status)} &middot; ${escapeHtml(log.response_ms)} ms</p>
-        </div>
+    <section class="page-hero page-hero--compact">
+      <div class="page-hero__content">
+        <h2>Log ${escapeHtml(log.id)}</h2>
+        <p>Captured ${escapeHtml(log.created_at)} · ${escapeHtml(log.response_ms)} ms</p>
+      </div>
+      <div class="page-hero__actions">
         <a class="secondary" href="/admin/${encodeURIComponent(log.endpoint_id || '')}/logs${keyQuery}">Back to logs</a>
+      </div>
+    </section>
+    <section class="surface-card surface-card--stacked">
+      <header class="section-heading">
+        <div>
+          <h3>Request details</h3>
+          <p class="muted" style="margin: 0;">${escapeHtml(log.method)} request to <code>${escapeHtml(log.path)}</code></p>
+        </div>
+        <span class="${statusBadge}">Status ${escapeHtml(log.status)}</span>
       </header>
-      <article>
-        <h3>Request</h3>
-        <pre><code>${escapeHtml(`${log.method} ${log.path}`)}</code></pre>
-        <h4>Params</h4>
-        <pre><code>${pretty(log.matched_params)}</code></pre>
-        <h4>Query</h4>
-        <pre><code>${pretty(log.query)}</code></pre>
-        <h4>Headers</h4>
-        <pre><code>${pretty(log.headers)}</code></pre>
-        <h4>Body</h4>
-        <pre><code>${pretty(log.body, 'null')}</code></pre>
-      </article>
+      <div class="stack stack--lg">
+        <div class="stack">
+          <h4 style="margin: 0;">Request line</h4>
+          <pre><code>${escapeHtml(`${log.method} ${log.path}`)}</code></pre>
+        </div>
+        <div class="stack">
+          <h4 style="margin: 0;">Path parameters</h4>
+          <pre><code>${pretty(log.matched_params)}</code></pre>
+        </div>
+        <div class="stack">
+          <h4 style="margin: 0;">Query</h4>
+          <pre><code>${pretty(log.query)}</code></pre>
+        </div>
+        <div class="stack">
+          <h4 style="margin: 0;">Headers</h4>
+          <pre><code>${pretty(log.headers)}</code></pre>
+        </div>
+        <div class="stack">
+          <h4 style="margin: 0;">Body</h4>
+          <pre><code>${pretty(log.body, 'null')}</code></pre>
+        </div>
+      </div>
     </section>
   `;
 %>

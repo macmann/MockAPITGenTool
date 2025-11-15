@@ -7,48 +7,78 @@
     .replace(/'/g, '&#39;');
 
   const keyQuery = query.key ? `?key=${encodeURIComponent(query.key)}` : '';
-  const rows = (list || []).map((endpoint) => `
-    <tr>
-      <td>${escapeHtml(endpoint.name || endpoint.id)}</td>
-      <td><code>${escapeHtml(endpoint.method)}</code></td>
-      <td><code>${escapeHtml(endpoint.path)}</code></td>
-      <td>${endpoint.enabled ? '<span class="success">Enabled</span>' : '<span class="muted">Disabled</span>'}</td>
-      <td class="right">
-        <a class="secondary" href="/admin/${encodeURIComponent(endpoint.id)}/edit${keyQuery}">Edit</a>
-        <a class="secondary" href="/admin/${encodeURIComponent(endpoint.id)}/vars${keyQuery}">Vars</a>
-        <a class="secondary" href="/admin/${encodeURIComponent(endpoint.id)}/openapi${keyQuery}" target="_blank" rel="noopener noreferrer">OpenAPI</a>
-        <a class="secondary" href="/admin/${encodeURIComponent(endpoint.id)}/logs${keyQuery}">Logs</a>
-      </td>
-    </tr>
-  `).join('');
+  const totalCount = Array.isArray(list) ? list.length : 0;
+  const rows = (list || []).map((endpoint) => {
+    const description = endpoint.description
+      ? `<p class="muted" style="margin: 0.2rem 0 0;">${escapeHtml(endpoint.description)}</p>`
+      : '';
+    const statusBadge = endpoint.enabled
+      ? '<span class="status-badge status-badge--success">Enabled</span>'
+      : '<span class="status-badge status-badge--muted">Disabled</span>';
+
+    return `
+      <tr>
+        <td>
+          <strong>${escapeHtml(endpoint.name || endpoint.id)}</strong>
+          ${description}
+        </td>
+        <td><code>${escapeHtml(endpoint.method)}</code></td>
+        <td><code>${escapeHtml(endpoint.path)}</code></td>
+        <td>${statusBadge}</td>
+        <td>
+          <div class="table-actions">
+            <a class="secondary" href="/admin/${encodeURIComponent(endpoint.id)}/edit${keyQuery}">Edit</a>
+            <a class="secondary" href="/admin/${encodeURIComponent(endpoint.id)}/vars${keyQuery}">Vars</a>
+            <a class="secondary" href="/admin/${encodeURIComponent(endpoint.id)}/openapi${keyQuery}" target="_blank" rel="noopener noreferrer">OpenAPI</a>
+            <a class="secondary" href="/admin/${encodeURIComponent(endpoint.id)}/logs${keyQuery}">Logs</a>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
 
   const body = `
-    <section>
-      <header class="flex" style="justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
-        <div>
-          <h2 style="margin-bottom: 0.25rem;">Mock Endpoints</h2>
-          <p class="muted" style="margin: 0;">Create and manage mock API responses. Attach <code>?key=${escapeHtml(query.key || '')}</code> to links to stay authenticated.</p>
-        </div>
+    <section class="page-hero">
+      <div class="page-hero__content">
+        <h2>Mock endpoints</h2>
+        <p>Launch, document, and monitor mock API routes for your team. Share links with <code>?key=${escapeHtml(query.key || '')}</code> to stay authenticated.</p>
+      </div>
+      <div class="page-hero__actions">
         <a class="button" href="/admin/new${keyQuery}">+ New Endpoint</a>
+        <a class="secondary" href="/admin/mcp${keyQuery}">MCP servers</a>
+      </div>
+    </section>
+    <section class="surface-card surface-card--stacked">
+      <header class="section-heading">
+        <div>
+          <h3>All routes</h3>
+          <p class="muted" style="margin: 0;">Every mock response you have configured shows up here.</p>
+        </div>
+        <span class="status-pill">${totalCount} total</span>
       </header>
-      <table role="grid">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Method</th>
-            <th>Path</th>
-            <th>Status</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rows || `
+      <div class="table-card">
+        <table role="grid">
+          <thead>
             <tr>
-              <td colspan="5" class="muted">No endpoints yet. Create one to get started.</td>
+              <th>Name</th>
+              <th>Method</th>
+              <th>Path</th>
+              <th>Status</th>
+              <th>Actions</th>
             </tr>
-          `}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            ${rows || `
+              <tr>
+                <td class="empty-state" colspan="5">
+                  <strong>No endpoints yet.</strong>
+                  <p class="muted" style="margin: 0.25rem 0 0;">Create your first route to see it listed.</p>
+                </td>
+              </tr>
+            `}
+          </tbody>
+        </table>
+      </div>
     </section>
   `;
 %>

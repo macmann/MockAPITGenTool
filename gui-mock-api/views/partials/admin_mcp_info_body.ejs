@@ -1,7 +1,23 @@
-<h2>MCP connection details for <%= s.name %></h2>
-<p class="muted">Share this information with trusted third parties so they can configure their MCP client.</p>
+<section class="page-hero">
+  <div class="page-hero__content">
+    <h2>MCP connection details for <%= s.name %></h2>
+    <p>Share this information with trusted third parties so they can configure their MCP client.</p>
+  </div>
+  <div class="page-hero__actions">
+    <a class="secondary" href="/admin/mcp?key=<%= encodeURIComponent(query?.key || '') %>">Back to servers</a>
+    <% if (s.id) { %>
+      <a class="button" href="/admin/mcp/<%= s.id %>/tools?key=<%= encodeURIComponent(query?.key || '') %>">Manage tools</a>
+    <% } %>
+  </div>
+</section>
 
-<section class="connection-card">
+<section class="surface-card surface-card--stacked">
+  <header class="section-heading">
+    <div>
+      <h3>Connection configuration</h3>
+      <p class="muted" style="margin: 0;">Use these values to register the server in any MCP-compatible client.</p>
+    </div>
+  </header>
   <div class="config-grid">
     <div class="config-field">
       <span class="config-label">Type</span>
@@ -35,49 +51,53 @@
   </div>
 
   <% if (baseUrlSource === 'derived') { %>
-    <p class="muted" style="margin-top:0.5rem;">Tip: configure a base URL in the MCP server settings to avoid changes based on the current request.</p>
+    <p class="muted" style="margin:0;">Tip: configure a base URL in the MCP server settings to avoid changes based on the current request.</p>
   <% } else if (!baseUrl && !mcpPublicUrl) { %>
-    <div class="flash flash-error" style="margin-top:0.5rem;">No base URL configured yet. Local requests can use <code>/mcp</code>.</div>
+    <div class="flash flash-error">No base URL configured yet. Local requests can use <code>/mcp</code>.</div>
   <% } %>
 </section>
 
-<section>
-  <h3>Shareable JSON summary</h3>
-  <p class="muted">Includes the minimum fields a client needs to connect.</p>
+<section class="surface-card surface-card--stacked">
+  <header class="section-heading">
+    <div>
+      <h3>Shareable JSON summary</h3>
+      <p class="muted" style="margin: 0;">Includes the minimum fields a client needs to connect.</p>
+    </div>
+  </header>
   <pre><code><%- JSON.stringify(infoPayload, null, 2) %></code></pre>
 </section>
 
-<section>
-  <h3>Available tools</h3>
+<section class="surface-card surface-card--stacked">
+  <header class="section-heading">
+    <div>
+      <h3>Available tools</h3>
+      <p class="muted" style="margin: 0;">Expose endpoints as MCP tools so assistants can call them.</p>
+    </div>
+  </header>
   <% if ((tools || []).length === 0) { %>
-    <p class="muted">No MCP tools have been added yet. Add at least one tool to expose mock endpoints.</p>
+    <p class="muted" style="margin: 0;">No MCP tools have been added yet. Add at least one tool to expose mock endpoints.</p>
   <% } else { %>
-    <table>
-      <thead>
-        <tr>
-          <th>Tool name</th>
-          <th>HTTP method</th>
-          <th>Endpoint path</th>
-          <th>Description</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% for (const t of tools) { %>
+    <div class="table-card">
+      <table>
+        <thead>
           <tr>
-            <td><code><%= t.name %></code></td>
-            <td><code><%= String(t.method || '').toUpperCase() %></code></td>
-            <td><code><%= (t.path || '').replace(/:([A-Za-z0-9_]+)/g, '<$1>') %></code></td>
-            <td><%= t.description || '' %></td>
+            <th>Tool name</th>
+            <th>HTTP method</th>
+            <th>Endpoint path</th>
+            <th>Description</th>
           </tr>
-        <% } %>
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          <% for (const t of tools) { %>
+            <tr>
+              <td><code><%= t.name %></code></td>
+              <td><code><%= String(t.method || '').toUpperCase() %></code></td>
+              <td><code><%= (t.path || '').replace(/:([A-Za-z0-9_]+)/g, '<$1>') %></code></td>
+              <td><%= t.description || '' %></td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
   <% } %>
 </section>
-
-<p style="margin-top:1.5rem;">
-  <a class="button secondary" href="/admin/mcp?key=<%= encodeURIComponent(query?.key || '') %>">← Back to MCP servers</a>
-  <% if (s.id) { %>
-    <a class="button" href="/admin/mcp/<%= s.id %>/tools?key=<%= encodeURIComponent(query?.key || '') %>">Manage tools</a>
-  <% } %>
-</p>

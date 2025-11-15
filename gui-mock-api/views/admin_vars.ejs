@@ -65,11 +65,13 @@
     <tr>
       <td><code>${escapeHtml(row.k)}</code></td>
       <td>${escapeHtml(row.v)}</td>
-      <td class="right">
-        <form method="post" action="/admin/${encodeURIComponent(e.id)}/vars/delete${keyQuery}" onsubmit="return confirm('Delete variable?');" style="display:inline-flex; gap: 0.5rem; align-items: center;">
-          <input type="hidden" name="k" value="${escapeHtml(row.k)}" />
-          <button class="contrast" type="submit">Delete</button>
-        </form>
+      <td>
+        <div class="table-actions">
+          <form method="post" action="/admin/${encodeURIComponent(e.id)}/vars/delete${keyQuery}" onsubmit="return confirm('Delete variable?');">
+            <input type="hidden" name="k" value="${escapeHtml(row.k)}" />
+            <button class="button contrast" type="submit">Delete</button>
+          </form>
+        </div>
       </td>
     </tr>
   `).join('');
@@ -287,15 +289,16 @@
   const reviewStepNumber = (pathParams && pathParams.length) ? 4 : 3;
 
   const body = `
-    <section class="stack" style="display: flex; flex-direction: column; gap: 2rem;">
-      <header class="flex" style="justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
-        <div class="stack" style="gap: 0.5rem;">
-          <h2 style="margin: 0;">Variables for <code>${escapeHtml(e.method)} ${escapeHtml(e.path)}</code></h2>
-          <p class="muted" style="margin: 0; max-width: 60ch;">Follow the guided steps to capture the values you want to reuse. We’ve scanned the response body and surfaced any placeholders we found.</p>
-        </div>
+    <section class="page-hero page-hero--compact">
+      <div class="page-hero__content">
+        <h2>Variables for <code>${escapeHtml(e.method)} ${escapeHtml(e.path)}</code></h2>
+        <p>Follow the guided steps to capture the values you want to reuse. We’ve scanned the response body and surfaced any placeholders we found.</p>
+      </div>
+      <div class="page-hero__actions">
         <a class="secondary" href="/admin/${encodeURIComponent(e.id)}${keyQuery}">Back to endpoint</a>
-      </header>
-
+      </div>
+    </section>
+    <section class="surface-card surface-card--stacked stack stack--xl">
       <section class="stack" style="gap: 1rem;">
         <h3 style="margin: 0;">Step 1 · Review the placeholders</h3>
         <p class="muted" style="margin: 0;">These come straight from the response body (for example <code>{{vars.NAME}}</code> or <code>{{userid.name}}</code>).</p>
@@ -346,14 +349,16 @@
       <section class="stack" style="gap: 1rem;">
         <h3 style="margin: 0;">Step ${reviewStepNumber} · Review saved variables</h3>
         <p class="muted" style="margin: 0;">Update or remove any values below. Each key maps directly to a placeholder in your responses.</p>
-        <table>
-          <thead>
-            <tr><th>Key</th><th>Value</th><th></th></tr>
-          </thead>
-          <tbody>
-            ${varsRows || `<tr><td colspan="3" class="muted">No variables yet. Add one above to get started.</td></tr>`}
-          </tbody>
-        </table>
+        <div class="table-card">
+          <table>
+            <thead>
+              <tr><th>Key</th><th>Value</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+              ${varsRows || `<tr><td class="empty-state" colspan="3">No variables yet. Add one above to get started.</td></tr>`}
+            </tbody>
+          </table>
+        </div>
       </section>
     </section>
   `;

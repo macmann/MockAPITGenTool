@@ -6,16 +6,23 @@
     .replace(/>/g, '&gt;');
 
   const body = `
-    <article>
-      <h2>Sign in to the Admin Dashboard</h2>
-      ${errorMessage ? `<p role="alert" class="contrast">⚠️ ${escapeAttr(errorMessage)}</p>` : '<p>Enter the admin key that was configured during deployment to continue.</p>'}
-      <form method="post" action="/admin/login">
-        <label for="admin-key">Admin Key</label>
-        <input id="admin-key" name="key" type="password" required autofocus />
+    <section class="page-hero page-hero--compact">
+      <div class="page-hero__content">
+        <h2>Sign in to the Admin Dashboard</h2>
+        <p>Enter the admin key configured during deployment to continue.</p>
+      </div>
+    </section>
+    <section class="surface-card surface-card--stacked" style="max-width: 520px; margin: 0 auto;">
+      ${errorMessage ? `<div role="alert" class="flash flash-error">⚠️ ${escapeAttr(errorMessage)}</div>` : ''}
+      <form method="post" action="/admin/login" class="form-stack">
+        <label class="stack" for="admin-key">
+          <span>Admin key</span>
+          <input id="admin-key" name="key" type="password" required autofocus />
+        </label>
         <input type="hidden" name="next" value="${escapeAttr(nextPath)}" />
-        <button type="submit">Continue</button>
+        <button type="submit" class="button primary" style="justify-self: flex-start;">Continue</button>
       </form>
-    </article>
+    </section>
   `;
 %>
 <%- include('layout', { title: title || 'Admin Login', body }) %>

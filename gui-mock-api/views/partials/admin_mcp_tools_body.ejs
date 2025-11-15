@@ -1,71 +1,99 @@
-<h2>MCP Tools for <%= s.name %></h2>
-<p class="muted">Each tool maps to one existing mock endpoint and exposes it to MCP clients.</p>
+<section class="page-hero">
+  <div class="page-hero__content">
+    <h2>MCP tools for <%= s.name %></h2>
+    <p>Each tool maps to one existing mock endpoint and exposes it to MCP clients.</p>
+  </div>
+  <div class="page-hero__actions">
+    <a class="secondary" href="/admin/mcp?key=<%= encodeURIComponent(query?.key || '') %>">Back to servers</a>
+    <a class="button" href="/admin/mcp/<%= s.id %>/info?key=<%= encodeURIComponent(query?.key || '') %>">Connection info</a>
+  </div>
+</section>
 
-<p>
-  <a class="button secondary" href="/admin/mcp?key=<%= encodeURIComponent(query?.key || '') %>">← Back to MCP servers</a>
-  <a class="button" href="/admin/mcp/<%= s.id %>/info?key=<%= encodeURIComponent(query?.key || '') %>">Connection info</a>
-</p>
+<section class="surface-card surface-card--stacked">
+  <header class="section-heading">
+    <div>
+      <h3>Existing tools</h3>
+      <p class="muted" style="margin: 0;">Delete any tool to remove it from the MCP manifest.</p>
+    </div>
+  </header>
+  <% if (!tools || tools.length === 0) { %>
+    <p class="muted" style="margin: 0;">No tools yet. Create one below to expose a mock endpoint.</p>
+  <% } else { %>
+    <div class="table-card">
+      <table>
+        <thead>
+          <tr>
+            <th>Tool name</th>
+            <th>Endpoint</th>
+            <th>Description</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% for (const t of tools || []) { %>
+            <tr>
+              <td><code><%= t.name %></code></td>
+              <td><code><%= t.method %> <%= t.path %></code></td>
+              <td><%= t.description || '' %></td>
+              <td>
+                <div class="table-actions">
+                  <form method="post" action="/admin/mcp/<%= s.id %>/tools/<%= t.id %>/delete?key=<%= encodeURIComponent(query?.key || '') %>" onsubmit="return confirm('Delete this tool?');">
+                    <button class="button contrast" type="submit">Delete</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</section>
 
-<h3>Existing Tools</h3>
-<table>
-  <thead>
-    <tr>
-      <th>Tool Name</th>
-      <th>Endpoint</th>
-      <th>Description</th>
-      <th></th>
-    </tr>
-  </thead>
-  <tbody>
-    <% for (const t of tools || []) { %>
-      <tr>
-        <td><code><%= t.name %></code></td>
-        <td><code><%= t.method %> <%= t.path %></code></td>
-        <td><%= t.description || '' %></td>
-        <td class="right">
-          <form method="post" action="/admin/mcp/<%= s.id %>/tools/<%= t.id %>/delete?key=<%= encodeURIComponent(query?.key || '') %>" onsubmit="return confirm('Delete this tool?');">
-            <button class="button button-outline" type="submit">Delete</button>
-          </form>
-        </td>
-      </tr>
-    <% } %>
-  </tbody>
-</table>
+<section class="surface-card surface-card--stacked">
+  <header class="section-heading">
+    <div>
+      <h3>Add or update tool</h3>
+      <p class="muted" style="margin: 0;">Choose an endpoint and optionally describe the expected arguments.</p>
+    </div>
+  </header>
+  <form method="post" action="/admin/mcp/<%= s.id %>/tools/save?key=<%= encodeURIComponent(query?.key || '') %>" class="form-stack">
+    <input type="hidden" name="id" value=""/>
 
-<h3 style="margin-top:1.5rem;">Add / Update Tool</h3>
-<form method="post" action="/admin/mcp/<%= s.id %>/tools/save?key=<%= encodeURIComponent(query?.key || '') %>" class="grid" style="gap:1rem;">
-  <input type="hidden" name="id" value=""/>
+    <div class="form-grid form-grid--two">
+      <label class="stack">
+        <span>Tool name</span>
+        <input name="name" placeholder="getUserDetails" required/>
+      </label>
 
-  <label>
-    Tool Name
-    <input name="name" placeholder="getUserDetails" required/>
-  </label>
+      <label class="stack">
+        <span>Description</span>
+        <input name="description" placeholder="Fetch user details from mock API"/>
+      </label>
+    </div>
 
-  <label>
-    Description
-    <input name="description" placeholder="Fetch user details from mock API"/>
-  </label>
+    <label class="stack">
+      <span>Endpoint</span>
+      <select name="endpoint_id" required>
+        <option value="">-- Select endpoint --</option>
+        <% for (const e of endpoints || []) { %>
+          <option value="<%= e.id %>"><%= e.method %> <%= e.path %></option>
+        <% } %>
+      </select>
+    </label>
 
-  <label>
-    Endpoint
-    <select name="endpoint_id" required>
-      <option value="">-- Select endpoint --</option>
-      <% for (const e of endpoints || []) { %>
-        <option value="<%= e.id %>"><%= e.method %> <%= e.path %></option>
-      <% } %>
-    </select>
-  </label>
-
-  <label>
-    Arg Schema (JSON)
-    <textarea name="arg_schema" rows="6" placeholder='{
+    <label class="stack">
+      <span>Arg schema (JSON)</span>
+      <textarea name="arg_schema" rows="6" placeholder='{
   "type": "object",
   "properties": {
     "userid": { "type": "string", "description": "User ID" }
   },
   "required": ["userid"]
 }'></textarea>
-  </label>
+      <small class="muted">Optional: describe the arguments your tool expects.</small>
+    </label>
 
-  <button class="button primary" type="submit">Save Tool</button>
-</form>
+    <button class="button primary" type="submit" style="justify-self: flex-start;">Save tool</button>
+  </form>
+</section>

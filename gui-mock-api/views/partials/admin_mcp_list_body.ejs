@@ -1,53 +1,78 @@
-<h2>MCP Servers</h2>
-<p class="muted">Configure MCP servers that expose selected mock endpoints as tools.</p>
+<% const serverCount = Array.isArray(servers) ? servers.length : 0; %>
 
-<% if (statusMessage) { %>
-  <div class="flash <%= statusType ? `flash-${statusType}` : '' %>"><%= statusMessage %></div>
-<% } %>
+<section class="page-hero">
+  <div class="page-hero__content">
+    <h2>MCP servers</h2>
+    <p>Configure Model Context Protocol servers that expose your mock endpoints as tools.</p>
+  </div>
+  <div class="page-hero__actions">
+    <a class="button" href="/admin/mcp/new?key=<%= encodeURIComponent(query?.key || '') %>">+ New MCP Server</a>
+    <a class="secondary" href="/admin?key=<%= encodeURIComponent(query?.key || '') %>">Back to endpoints</a>
+  </div>
+</section>
 
-<p>
-  <a class="button" href="/admin/mcp/new?key=<%= encodeURIComponent(query?.key || '') %>">+ New MCP Server</a>
-  <a class="button secondary" href="/admin?key=<%= encodeURIComponent(query?.key || '') %>">Back to endpoints</a>
-</p>
-
-<table>
-  <thead>
-    <tr>
-      <th>Name</th>
-      <th>Base URL</th>
-      <th>Status</th>
-      <th></th>
-    </tr>
-  </thead>
-  <tbody>
-    <% for (const s of servers || []) { %>
-      <tr>
-        <td><strong><%= s.name %></strong><br/><span class="muted"><%= s.description || '' %></span></td>
-        <td><code><%= s.base_url || '' %></code></td>
-        <td>
-          <% if (s.is_enabled) { %>
-            <strong>Mounted at /mcp</strong>
-          <% } else { %>
-            <strong>Disabled</strong>
-          <% } %>
-        </td>
-        <td class="right">
-          <div class="action-buttons">
-            <a class="button button-outline" href="/admin/mcp/<%= s.id %>/info?key=<%= encodeURIComponent(query?.key || '') %>">Info</a>
-            <a class="button button-outline" href="/admin/mcp/<%= s.id %>?key=<%= encodeURIComponent(query?.key || '') %>">Edit</a>
-            <a class="button button-outline" href="/admin/mcp/<%= s.id %>/tools?key=<%= encodeURIComponent(query?.key || '') %>">Tools</a>
-            <% if (s.is_enabled) { %>
-              <form method="post" action="/admin/mcp/<%= s.id %>/disable?key=<%= encodeURIComponent(query?.key || '') %>">
-                <button class="contrast" type="submit">Disable</button>
-              </form>
-            <% } else { %>
-              <form method="post" action="/admin/mcp/<%= s.id %>/enable?key=<%= encodeURIComponent(query?.key || '') %>">
-                <button class="primary" type="submit">Enable</button>
-              </form>
-            <% } %>
-          </div>
-        </td>
-      </tr>
-    <% } %>
-  </tbody>
-</table>
+<section class="surface-card surface-card--stacked">
+  <% if (statusMessage) { %>
+    <div class="flash <%= statusType ? `flash-${statusType}` : '' %>"><%= statusMessage %></div>
+  <% } %>
+  <header class="section-heading">
+    <div>
+      <h3>Connected servers</h3>
+      <p class="muted" style="margin: 0;">See every MCP connection and manage access in one place.</p>
+    </div>
+    <span class="status-pill"><%= serverCount %> total</span>
+  </header>
+  <div class="table-card">
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Base URL</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (!servers || servers.length === 0) { %>
+          <tr>
+            <td class="empty-state" colspan="4">No MCP servers yet. Create one to connect your tools.</td>
+          </tr>
+        <% } %>
+        <% for (const s of servers || []) { %>
+          <tr>
+            <td>
+              <strong><%= s.name %></strong>
+              <% if (s.description) { %>
+                <p class="muted" style="margin: 0.25rem 0 0;"><%= s.description %></p>
+              <% } %>
+            </td>
+            <td><code><%= s.base_url || '' %></code></td>
+            <td>
+              <% if (s.is_enabled) { %>
+                <span class="status-badge status-badge--success">Mounted at /mcp</span>
+              <% } else { %>
+                <span class="status-badge status-badge--muted">Disabled</span>
+              <% } %>
+            </td>
+            <td>
+              <div class="table-actions">
+                <a class="secondary" href="/admin/mcp/<%= s.id %>/info?key=<%= encodeURIComponent(query?.key || '') %>">Info</a>
+                <a class="secondary" href="/admin/mcp/<%= s.id %>?key=<%= encodeURIComponent(query?.key || '') %>">Edit</a>
+                <a class="secondary" href="/admin/mcp/<%= s.id %>/tools?key=<%= encodeURIComponent(query?.key || '') %>">Tools</a>
+                <% if (s.is_enabled) { %>
+                  <form method="post" action="/admin/mcp/<%= s.id %>/disable?key=<%= encodeURIComponent(query?.key || '') %>">
+                    <button class="button contrast" type="submit">Disable</button>
+                  </form>
+                <% } else { %>
+                  <form method="post" action="/admin/mcp/<%= s.id %>/enable?key=<%= encodeURIComponent(query?.key || '') %>">
+                    <button class="button" type="submit">Enable</button>
+                  </form>
+                <% } %>
+              </div>
+            </td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</section>

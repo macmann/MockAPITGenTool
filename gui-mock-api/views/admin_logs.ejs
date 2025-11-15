@@ -22,35 +22,59 @@
     }
   };
 
-  const rows = (logs || []).map((log) => `
-    <tr>
-      <td>${escapeHtml(log.created_at)}</td>
-      <td>${escapeHtml(log.status)}</td>
-      <td>${escapeHtml(log.response_ms)}</td>
-      <td>${escapeHtml(log.method)}</td>
-      <td><code>${escapeHtml(log.path)}</code></td>
-      <td>${formatBodyPreview(log.body)}</td>
-      <td class="right"><a class="secondary" href="/admin/logs/${encodeURIComponent(log.id)}${keyQuery}">View</a></td>
-    </tr>
-  `).join('');
+  const rows = (logs || []).map((log) => {
+    const statusCode = Number(log.status);
+    let statusClass = 'status-badge status-badge--muted';
+    if (statusCode >= 200 && statusCode < 300) {
+      statusClass = 'status-badge status-badge--success';
+    } else if (statusCode >= 500) {
+      statusClass = 'status-badge status-badge--error';
+    } else if (statusCode >= 400) {
+      statusClass = 'status-badge status-badge--warn';
+    }
+
+    return `
+      <tr>
+        <td>
+          <div style="display:flex; flex-direction:column; gap:0.25rem;">
+            <strong>${escapeHtml(log.created_at)}</strong>
+            <span class="muted" style="font-size:0.85rem;">${escapeHtml(log.response_ms)} ms</span>
+          </div>
+        </td>
+        <td><span class="${statusClass}">${escapeHtml(log.status)}</span></td>
+        <td><code>${escapeHtml(log.method)}</code></td>
+        <td><code>${escapeHtml(log.path)}</code></td>
+        <td>${formatBodyPreview(log.body)}</td>
+        <td>
+          <div class="table-actions">
+            <a class="secondary" href="/admin/logs/${encodeURIComponent(log.id)}${keyQuery}">View</a>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
 
   const body = `
-    <section>
-      <header class="flex" style="justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
-        <div>
-          <h2 style="margin-bottom: 0.25rem;">Logs for <code>${escapeHtml(e.method)} ${escapeHtml(e.path)}</code></h2>
-          <p class="muted" style="margin: 0;">Inspect the most recent requests handled by this endpoint.</p>
-        </div>
+    <section class="page-hero page-hero--compact">
+      <div class="page-hero__content">
+        <h2>Recent logs</h2>
+        <p>Inspect the last requests served by <code>${escapeHtml(e.method)} ${escapeHtml(e.path)}</code>.</p>
+      </div>
+      <div class="page-hero__actions">
         <a class="secondary" href="/admin/${encodeURIComponent(e.id)}${keyQuery}">Back to endpoint</a>
-      </header>
-      <table>
-        <thead>
-          <tr><th>When</th><th>Status</th><th>ms</th><th>Method</th><th>Path</th><th>Request body</th><th></th></tr>
-        </thead>
-        <tbody>
-          ${rows || `<tr><td colspan="7" class="muted">No logs captured yet.</td></tr>`}
-        </tbody>
-      </table>
+      </div>
+    </section>
+    <section class="surface-card">
+      <div class="table-card">
+        <table>
+          <thead>
+            <tr><th>When</th><th>Status</th><th>Method</th><th>Path</th><th>Request body</th><th>Actions</th></tr>
+          </thead>
+          <tbody>
+            ${rows || `<tr><td class="empty-state" colspan="6">No logs captured yet.</td></tr>`}
+          </tbody>
+        </table>
+      </div>
     </section>
   `;
 %>

@@ -1,61 +1,90 @@
-<h2><%= s.id ? 'Edit MCP Server' : 'New MCP Server' %></h2>
-<p class="muted">Base URL should point to your mock API runtime (e.g. http://localhost:3000 or your Render URL).</p>
+<section class="page-hero">
+  <div class="page-hero__content">
+    <h2><%= s.id ? 'Edit MCP Server' : 'New MCP Server' %></h2>
+    <p>Base URL should point to your mock API runtime (e.g. http://localhost:3000 or your Render URL).</p>
+  </div>
+  <div class="page-hero__actions">
+    <a class="secondary" href="/admin/mcp?key=<%= encodeURIComponent(query?.key || '') %>">Back to servers</a>
+  </div>
+</section>
 
-<form method="post" action="/admin/mcp/save?key=<%= encodeURIComponent(query?.key || '') %>" class="grid" style="gap:1rem;">
-  <input type="hidden" name="id" value="<%= s.id || '' %>"/>
+<section class="surface-card surface-card--stacked">
+  <form method="post" action="/admin/mcp/save?key=<%= encodeURIComponent(query?.key || '') %>" class="form-stack">
+    <input type="hidden" name="id" value="<%= s.id || '' %>"/>
 
-  <label>
-    Name
-    <input name="name" required value="<%= s.name || '' %>"/>
-  </label>
+    <div class="form-grid form-grid--two">
+      <label class="stack">
+        <span>Name</span>
+        <input name="name" required value="<%= s.name || '' %>"/>
+      </label>
 
-  <label>
-    Description
-    <input name="description" value="<%= s.description || '' %>"/>
-  </label>
+      <label class="stack">
+        <span>Description</span>
+        <input name="description" value="<%= s.description || '' %>"/>
+      </label>
+    </div>
 
-  <label>
-    Base URL
-    <input name="base_url" placeholder="http://localhost:3000" value="<%= s.base_url || '' %>"/>
-  </label>
+    <label class="stack">
+      <span>Base URL</span>
+      <input name="base_url" placeholder="http://localhost:3000" value="<%= s.base_url || '' %>"/>
+      <small class="muted">If left blank, we’ll fall back to the current request origin.</small>
+    </label>
 
-  <label>
-    API Key Header (optional)
-    <input name="api_key_header" placeholder="x-api-key" value="<%= s.api_key_header || '' %>"/>
-  </label>
+    <div class="form-grid form-grid--two">
+      <label class="stack">
+        <span>API Key Header (optional)</span>
+        <input name="api_key_header" placeholder="x-api-key" value="<%= s.api_key_header || '' %>"/>
+      </label>
 
-  <label>
-    API Key Value (optional)
-    <input name="api_key_value" placeholder="secret" value="<%= s.api_key_value || '' %>"/>
-  </label>
+      <label class="stack">
+        <span>API Key Value (optional)</span>
+        <input name="api_key_value" placeholder="secret" value="<%= s.api_key_value || '' %>"/>
+      </label>
+    </div>
 
-  <label class="checkbox">
-    <input type="checkbox" name="is_enabled" value="true" <%= s.is_enabled ? 'checked' : '' %>/>
-    Enabled
-  </label>
+    <label class="checkbox">
+      <input type="checkbox" name="is_enabled" value="true" <%= s.is_enabled ? 'checked' : '' %>/>
+      <span>Enable this MCP server immediately</span>
+    </label>
 
-  <button class="button primary" type="submit">Save</button>
-</form>
+    <button class="button primary" type="submit" style="justify-self: flex-start;">Save server</button>
+  </form>
+</section>
 
 <% if (s.id) { %>
-  <div class="action-buttons" style="margin-top:1rem; gap:0.5rem;">
-    <% if (s.is_enabled) { %>
-      <form method="post" action="/admin/mcp/<%= s.id %>/disable?key=<%= encodeURIComponent(query?.key || '') %>">
-        <button class="contrast" type="submit">Disable</button>
-      </form>
-    <% } else { %>
-      <form method="post" action="/admin/mcp/<%= s.id %>/enable?key=<%= encodeURIComponent(query?.key || '') %>">
-        <button class="primary" type="submit">Enable</button>
-      </form>
-    <% } %>
-  </div>
+  <section class="surface-card surface-card--stacked">
+    <header class="section-heading">
+      <div>
+        <h3>Manage this server</h3>
+        <p class="muted" style="margin: 0;">Toggle availability or jump into related tooling.</p>
+      </div>
+    </header>
+    <div class="action-buttons" style="justify-content: flex-start;">
+      <a class="secondary" href="/admin/mcp/<%= s.id %>/info?key=<%= encodeURIComponent(query?.key || '') %>">Connection info</a>
+      <a class="secondary" href="/admin/mcp/<%= s.id %>/tools?key=<%= encodeURIComponent(query?.key || '') %>">Manage tools</a>
+    </div>
+    <div class="action-buttons" style="justify-content: flex-start;">
+      <% if (s.is_enabled) { %>
+        <form method="post" action="/admin/mcp/<%= s.id %>/disable?key=<%= encodeURIComponent(query?.key || '') %>">
+          <button class="button contrast" type="submit">Disable server</button>
+        </form>
+      <% } else { %>
+        <form method="post" action="/admin/mcp/<%= s.id %>/enable?key=<%= encodeURIComponent(query?.key || '') %>">
+          <button class="button" type="submit">Enable server</button>
+        </form>
+      <% } %>
+    </div>
+  </section>
 
-  <form method="post" action="/admin/mcp/<%= s.id %>/delete?key=<%= encodeURIComponent(query?.key || '') %>" style="margin-top:1rem;" onsubmit="return confirm('Delete this MCP server?');">
-    <button class="button contrast" type="submit">Delete</button>
-  </form>
-
-  <p style="margin-top:1rem;">
-    <a href="/admin/mcp/<%= s.id %>/info?key=<%= encodeURIComponent(query?.key || '') %>">View connection info →</a><br/>
-    <a href="/admin/mcp/<%= s.id %>/tools?key=<%= encodeURIComponent(query?.key || '') %>">Manage tools for this server →</a>
-  </p>
+  <section class="surface-card">
+    <header class="section-heading">
+      <div>
+        <h3>Danger zone</h3>
+        <p class="muted" style="margin: 0;">Deleting the server removes all tool mappings.</p>
+      </div>
+    </header>
+    <form method="post" action="/admin/mcp/<%= s.id %>/delete?key=<%= encodeURIComponent(query?.key || '') %>" onsubmit="return confirm('Delete this MCP server?');" class="action-buttons" style="justify-content: flex-start;">
+      <button class="button contrast" type="submit">Delete server</button>
+    </form>
+  </section>
 <% } %>

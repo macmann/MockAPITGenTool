@@ -64,31 +64,31 @@
     .join('');
 
   const body = `
-    <section class="stack" style="display: flex; flex-direction: column; gap: 2rem;">
-      <header class="flex" style="justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
-        <div>
-          <h2 style="margin-bottom: 0.25rem;">${escapeHtml(title || 'Endpoint')}</h2>
-          <p class="muted" style="margin: 0;">Follow the guided steps to describe your endpoint—no code snippets required.</p>
-        </div>
-        <div class="flex" style="gap: 0.5rem;">
-          <a class="secondary" href="/admin${keyQuery}">Back to list</a>
-          ${currentEndpoint.id ? `<a class="secondary" href="${varsLink}">Vars</a>` : ''}
-          ${currentEndpoint.id ? `<a class="secondary" href="${logsLink}">Logs</a>` : ''}
-        </div>
-      </header>
-      <form method="post" action="${formAction}" style="display: flex; flex-direction: column; gap: 2rem;">
+    <section class="page-hero">
+      <div class="page-hero__content">
+        <h2>${escapeHtml(title || 'Endpoint')}</h2>
+        <p>Follow the guided steps to describe your endpoint—no code snippets required.</p>
+      </div>
+      <div class="page-hero__actions">
+        <a class="secondary" href="/admin${keyQuery}">Back to routes</a>
+        ${currentEndpoint.id ? `<a class="secondary" href="${varsLink}">Vars</a>` : ''}
+        ${currentEndpoint.id ? `<a class="secondary" href="${logsLink}">Logs</a>` : ''}
+      </div>
+    </section>
+    <section class="surface-card surface-card--stacked">
+      <form method="post" action="${formAction}" class="form-stack">
         <input type="hidden" name="id" value="${escapeHtml(currentEndpoint.id || '')}" />
 
         <fieldset>
           <legend>Step 1 · Give it a friendly name</legend>
           <p class="muted">Add notes that make sense to your team. These are for you and do not affect the API.</p>
-          <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
-            <label>
-              Name
+          <div class="form-grid form-grid--two">
+            <label class="stack">
+              <span>Name</span>
               <input name="name" placeholder="Catalog lookup" value="${escapeHtml(currentEndpoint.name || '')}" />
             </label>
-            <label>
-              Description
+            <label class="stack">
+              <span>Description</span>
               <input name="description" placeholder="Optional notes" value="${escapeHtml(currentEndpoint.description || '')}" />
             </label>
           </div>
@@ -101,20 +101,20 @@
         <fieldset>
           <legend>Step 2 · Choose how clients will call it</legend>
           <p class="muted">Select the HTTP method and URL path the mock API should listen to.</p>
-          <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
-            <label>
-              Method
+          <div class="form-grid form-grid--three">
+            <label class="stack">
+              <span>Method</span>
               <select name="method" required>
                 ${methodOptions}
               </select>
             </label>
-            <label>
-              Path
+            <label class="stack">
+              <span>Path</span>
               <input name="path" required value="${escapeHtml(currentEndpoint.path || '/')}" placeholder="/catalog/items" />
               <small class="muted">Paths should start with a forward slash.</small>
             </label>
-            <label>
-              Delay (ms)
+            <label class="stack">
+              <span>Delay (ms)</span>
               <input type="number" min="0" name="response_delay_ms" value="${escapeHtml(currentEndpoint.response_delay_ms ?? 0)}" />
               <small class="muted">Optional wait time before the response is sent.</small>
             </label>
@@ -124,16 +124,16 @@
         <fieldset>
           <legend>Step 3 · Decide on the response</legend>
           <p class="muted">Pick a quick template or describe the message you want clients to see.</p>
-          <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; align-items: end;">
-            <label>
-              Quick start templates
+          <div class="form-grid form-grid--two" style="align-items: end;">
+            <label class="stack">
+              <span>Quick start templates</span>
               <select data-response-template>
                 ${responseTemplateSelectOptions}
               </select>
               <small class="muted">We’ll fill in the response for you. Existing text stays unless you confirm a change.</small>
             </label>
-            <label>
-              Status code
+            <label class="stack">
+              <span>Status code</span>
               <input type="hidden" data-status-value name="response_status" value="${escapeHtml(currentStatus)}" />
               <select data-status-select>
                 ${statusOptions}
@@ -141,18 +141,18 @@
             </label>
           </div>
           <div data-status-custom style="${hasPresetStatus ? 'display: none;' : ''}">
-            <label>
-              Custom status code
+            <label class="stack">
+              <span>Custom status code</span>
               <input type="number" min="100" max="599" value="${customStatusValue}" data-status-custom-input />
               <small class="muted">Use this if you need a status outside the common list.</small>
             </label>
           </div>
-          <label>
-            Response body
+          <label class="stack">
+            <span>Response body</span>
             <textarea name="response_body" rows="8" placeholder='Tell the client what happened' data-response-body>${escapeHtml(currentEndpoint.response_body || '')}</textarea>
             <small class="muted">Write the message you’d like the API to return. Templates can populate this automatically.</small>
           </label>
-          <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+          <div class="form-grid form-grid--two">
             <label class="checkbox">
               <input type="checkbox" name="response_is_json" value="true" ${currentEndpoint.response_is_json ? 'checked' : ''} data-response-json />
               <span>Format response as JSON<br><small class="muted">We’ll validate the JSON for you before saving.</small></span>
@@ -166,28 +166,36 @@
 
         <details>
           <summary>Advanced settings (optional)</summary>
-          <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin-top: 1rem;">
-            <label>
-              Require specific headers
+          <div class="form-grid form-grid--two" style="margin-top: 1rem;">
+            <label class="stack">
+              <span>Require specific headers</span>
               <textarea data-json-field name="match_headers" rows="3" placeholder='{"x-api-version":"1"}'>${escapeHtml(currentEndpoint.match_headers || '{}')}</textarea>
               <small class="muted">Only match requests that include these header names and values.</small>
             </label>
-            <label>
-              Extra response headers
+            <label class="stack">
+              <span>Extra response headers</span>
               <textarea data-json-field data-response-headers name="response_headers" rows="3" placeholder='{"Content-Type":"application/json"}'>${escapeHtml(currentEndpoint.response_headers || '{}')}</textarea>
               <small class="muted">We’ll add <code>Content-Type</code> automatically when JSON is selected.</small>
             </label>
           </div>
         </details>
 
-        <button type="submit" class="button primary">Save endpoint</button>
+        <button type="submit" class="button primary" style="justify-self: flex-start;">Save endpoint</button>
       </form>
-      ${currentEndpoint.id ? `
-        <form method="post" action="${deleteAction}" onsubmit="return confirm('Delete this endpoint?');" style="margin-top: -1rem;">
-          <button class="contrast" type="submit">Delete endpoint</button>
-        </form>
-      ` : ''}
     </section>
+    ${currentEndpoint.id ? `
+      <section class="surface-card">
+        <header class="section-heading">
+          <div>
+            <h3>Danger zone</h3>
+            <p class="muted" style="margin: 0;">Remove this endpoint and all of its stored logs.</p>
+          </div>
+        </header>
+        <form method="post" action="${deleteAction}" onsubmit="return confirm('Delete this endpoint?');" class="action-buttons">
+          <button class="button contrast" type="submit">Delete endpoint</button>
+        </form>
+      </section>
+    ` : ''}
   `;
 %>
 <%- include('layout', { title: title || 'Endpoint', body }) %>
