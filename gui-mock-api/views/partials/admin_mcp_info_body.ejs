@@ -20,6 +20,14 @@
   </header>
   <div class="config-grid">
     <div class="config-field">
+      <span class="config-label">Slug</span>
+      <code class="config-value"><%= s.slug %></code>
+    </div>
+    <div class="config-field config-field--wide">
+      <span class="config-label">MCP Path</span>
+      <code class="config-value"><%= mcpPath %></code>
+    </div>
+    <div class="config-field">
       <span class="config-label">Type</span>
       <code class="config-value"><%= clientConfig.type %></code>
     </div>
@@ -53,7 +61,7 @@
   <% if (baseUrlSource === 'derived') { %>
     <p class="muted" style="margin:0;">Tip: configure a base URL in the MCP server settings to avoid changes based on the current request.</p>
   <% } else if (!baseUrl && !mcpPublicUrl) { %>
-    <div class="flash flash-error">No base URL configured yet. Local requests can use <code>/mcp</code>.</div>
+    <div class="flash flash-error">No base URL configured yet. Local requests can use <code><%= mcpPath %></code>.</div>
   <% } %>
 </section>
 

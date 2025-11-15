@@ -12,6 +12,10 @@
   <form method="post" action="/admin/mcp/save?key=<%= encodeURIComponent(query?.key || '') %>" class="form-stack">
     <input type="hidden" name="id" value="<%= s.id || '' %>"/>
 
+    <% if (errorMessage) { %>
+      <div class="flash flash-error"><%= errorMessage %></div>
+    <% } %>
+
     <div class="form-grid form-grid--two">
       <label class="stack">
         <span>Name</span>
@@ -19,10 +23,21 @@
       </label>
 
       <label class="stack">
-        <span>Description</span>
-        <input name="description" value="<%= s.description || '' %>"/>
+        <span>Slug (URL path)</span>
+        <input
+          name="slug"
+          value="<%= s.slug || '' %>"
+          placeholder="mcp-company-a"
+          pattern="[a-z0-9-]*"
+        />
+        <small class="muted">Used in the MCP URL, e.g. <code>/mcp/&lt;slug&gt;</code> (lowercase letters, digits, hyphens). Leave blank to generate automatically.</small>
       </label>
     </div>
+
+    <label class="stack">
+      <span>Description</span>
+      <input name="description" value="<%= s.description || '' %>"/>
+    </label>
 
     <label class="stack">
       <span>Base URL</span>

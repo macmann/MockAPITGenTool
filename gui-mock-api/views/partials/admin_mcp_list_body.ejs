@@ -27,6 +27,7 @@
       <thead>
         <tr>
           <th>Name</th>
+          <th>MCP URL</th>
           <th>Base URL</th>
           <th>Status</th>
           <th>Actions</th>
@@ -35,7 +36,7 @@
       <tbody>
         <% if (!servers || servers.length === 0) { %>
           <tr>
-            <td class="empty-state" colspan="4">No MCP servers yet. Create one to connect your tools.</td>
+            <td class="empty-state" colspan="5">No MCP servers yet. Create one to connect your tools.</td>
           </tr>
         <% } %>
         <% for (const s of servers || []) { %>
@@ -46,10 +47,17 @@
                 <p class="muted" style="margin: 0.25rem 0 0;"><%= s.description %></p>
               <% } %>
             </td>
+            <td>
+              <code><%= s.mcpPath %></code>
+              <% if (s.mcpUrl && s.mcpUrl !== s.mcpPath) { %>
+                <p class="muted" style="margin: 0.25rem 0 0;">Full URL: <code><%= s.mcpUrl %></code></p>
+              <% } %>
+              <p class="muted" style="margin: 0.25rem 0 0;">Slug: <code><%= s.slug %></code></p>
+            </td>
             <td><code><%= s.base_url || '' %></code></td>
             <td>
               <% if (s.is_enabled) { %>
-                <span class="status-badge status-badge--success">Mounted at /mcp</span>
+                <span class="status-badge status-badge--success">Enabled</span>
               <% } else { %>
                 <span class="status-badge status-badge--muted">Disabled</span>
               <% } %>

@@ -1,8 +1,5 @@
 import express from 'express';
-import {
-  getMcpServer,
-  listMcpToolsWithEndpoints
-} from './gui-mock-api/db.js';
+import { listMcpToolsWithEndpoints } from './gui-mock-api/db.js';
 
 const DEFAULT_PROTOCOL_VERSION = '2025-06-18';
 const DEFAULT_INPUT_SCHEMA = {
@@ -77,6 +74,7 @@ function parseToolInputSchema(rawSchema) {
 }
 
 function buildToolsList(serverId) {
+  if (!serverId) return [];
   const toolRecords = listMcpToolsWithEndpoints(serverId) || [];
   return toolRecords.map((tool) => ({
     name: tool.name,
@@ -98,34 +96,32 @@ function sendJson(res, status, payload) {
   return response;
 }
 
-export function createMcpRouter(options = {}) {
-  const { serverId, mockBaseUrl } = options;
-  if (!serverId) {
-    throw new Error('MCP server ID is required to mount MCP routes');
-  }
-
-  const serverConfig = getMcpServer(serverId);
-  if (!serverConfig || !serverConfig.is_enabled) {
-    throw new Error(`MCP server not found or not enabled: ${serverId}`);
-  }
-
-  const resolvedMockBaseUrl =
-    mockBaseUrl ||
-    process.env.MOCK_BASE_URL ||
-    serverConfig.base_url ||
-    'http://localhost:3000';
-
+export function createMcpRouter() {
   const router = express.Router();
 
   router.use((req, res, next) => {
+    if (!req.mcpServer) {
+      console.error('[MCP] Missing req.mcpServer context');
+      const errorResponse = {
+        jsonrpc: '2.0',
+        id: null,
+        error: {
+          code: -32603,
+          message: 'Internal MCP server error'
+        }
+      };
+      return sendJson(res, 500, errorResponse);
+    }
+
     if (typeof req.rawBody !== 'string') {
       req.rawBody = '[empty body]';
     }
-    next();
+    return next();
   });
 
   router.get('/', (req, res) => {
-    console.log('[MCP] Health check GET /mcp');
+    const slug = req.mcpServer?.slug || 'unknown';
+    console.log(`[MCP] Health check GET /mcp/${slug}`);
     return sendJson(res, 200, {
       ok: true,
       message: 'MCP endpoint is running (use POST with JSON-RPC 2.0)'
@@ -133,6 +129,22 @@ export function createMcpRouter(options = {}) {
   });
 
   router.post('/', async (req, res, next) => {
+    const serverConfig = req.mcpServer;
+    const serverId = serverConfig?.id || null;
+    const slug = serverConfig?.slug || 'unknown';
+
+    if (!serverConfig || !serverId) {
+      console.error('[MCP] Missing MCP server configuration for request', { slug });
+      const errorResponse = {
+        jsonrpc: '2.0',
+        id: null,
+        error: {
+          code: -32603,
+          message: 'Internal MCP server error'
+        }
+      };
+      return sendJson(res, 500, errorResponse);
+    }
     const startedAt = new Date().toISOString();
     const bodyForLog =
       typeof req.rawBody === 'string'
@@ -146,7 +158,9 @@ export function createMcpRouter(options = {}) {
       method: req.method,
       url: req.originalUrl,
       headers: truncateHeaders(req.headers),
-      body: bodyForLog
+      body: bodyForLog,
+      serverId,
+      slug
     });
 
     const contentType = (req.headers['content-type'] || '').split(';')[0].trim();
@@ -201,8 +215,8 @@ export function createMcpRouter(options = {}) {
             result: {
               protocolVersion,
               serverInfo: {
-                name: serverConfig.name || 'Brillar Mock API MCP',
-                version: serverConfig.version || '0.1.0'
+                name: serverConfig?.name || 'Brillar Mock API MCP',
+                version: serverConfig?.version || '0.1.0'
               },
               capabilities: {
                 tools: {
@@ -343,10 +357,6 @@ export function createMcpRouter(options = {}) {
     };
     return sendJson(res, 500, errorResponse);
   });
-
-  console.log(
-    `[MCP] Router initialized for server "${serverId}" (mockBaseUrl=${resolvedMockBaseUrl})`
-  );
 
   return router;
 }
