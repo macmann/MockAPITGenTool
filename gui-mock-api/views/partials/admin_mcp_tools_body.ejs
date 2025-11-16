@@ -130,14 +130,14 @@
     <% if (!openapiPreview.length) { %>
       <p class="muted">No operations found in the provided spec.</p>
     <% } else { %>
-      <form method="post" action="/admin/mcp/<%= mcpServer.id %>/tools/openapi/save" class="form-stack">
+      <form method="post" action="/admin/mcp/<%= mcpServer.id %>/tools/openapi/save" class="form-stack openapi-preview">
         <input type="hidden" name="key" value="<%= key %>">
         <label class="stack">
           <span>Base URL (optional)</span>
           <input type="text" name="base_url" value="<%= mcpUrl || '' %>" placeholder="https://api.example.com" />
         </label>
-        <div class="table-card">
-          <table>
+        <div class="table-card openapi-preview__table-card">
+          <table class="openapi-preview__table">
             <thead>
               <tr>
                 <th style="width: 2rem;"></th>
