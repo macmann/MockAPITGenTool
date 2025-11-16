@@ -4,8 +4,9 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '../../lib/auth.js';
 import prisma from '../../lib/prisma.js';
 import { ensureDefaultProjectForUser } from '../../lib/user-context.js';
+import ProjectSelector from './ProjectSelector.jsx';
 
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }) {
   const session = await getServerSession(authOptions);
 
   if (!session) {
@@ -18,22 +19,26 @@ export default async function DashboardPage() {
   }
 
   const { project: defaultProject } = await ensureDefaultProjectForUser(userId);
+  const projects = await prisma.project.findMany({
+    where: { userId },
+    orderBy: { createdAt: 'desc' }
+  });
 
-  const [projects, apiConnections, specs, toolMappings] = await Promise.all([
-    prisma.project.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' }
-    }),
+  const requestedProjectId = Number(searchParams?.projectId);
+  const activeProject = projects.find((project) => project.id === requestedProjectId) || defaultProject;
+  const activeProjectId = activeProject.id;
+
+  const [apiConnections, specs, toolMappings] = await Promise.all([
     prisma.apiConnection.findMany({
-      where: { userId },
+      where: { userId, projectId: activeProjectId },
       orderBy: { updatedAt: 'desc' }
     }),
     prisma.openApiSpec.findMany({
-      where: { userId },
+      where: { userId, projectId: activeProjectId },
       orderBy: { updatedAt: 'desc' }
     }),
     prisma.toolMapping.findMany({
-      where: { userId },
+      where: { userId, projectId: activeProjectId },
       orderBy: { updatedAt: 'desc' }
     })
   ]);
@@ -54,9 +59,11 @@ export default async function DashboardPage() {
         Use this dashboard to manage projects, OpenAPI specs, and MCP tooling. Additional pages can reuse the same session via
         <code>getServerSession</code>.
       </p>
+      <ProjectSelector projects={projects} activeProjectId={activeProjectId} />
+
       <div className="stat">
-        <div className="label">Default project</div>
-        <div className="value">{defaultProject.name}</div>
+        <div className="label">Active project</div>
+        <div className="value">{activeProject.name}</div>
       </div>
       <div className="grid">
         <div className="panel muted">
@@ -73,7 +80,7 @@ export default async function DashboardPage() {
         </div>
         <div className="panel muted">
           <h2>API connections ({apiConnections.length})</h2>
-          <p className="small muted">Scoped to your user account.</p>
+          <p className="small muted">Scoped to user #{userId} and project #{activeProjectId}.</p>
           <ul>
             {apiConnections.map((conn) => (
               <li key={conn.id}>
