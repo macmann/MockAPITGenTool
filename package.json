@@ -7,7 +7,10 @@
   "scripts": {
     "start": "node index.js",
     "generate": "node src/index.js",
-    "mcp-server": "node mcp-server.js"
+    "mcp-server": "node mcp-server.js",
+    "db:migrate": "prisma migrate dev --name init",
+    "db:generate": "prisma generate",
+    "db:studio": "prisma studio"
   },
   "engines": {
     "node": ">=18.0.0"
@@ -30,6 +33,10 @@
     "openapi-types": "^12.0.0",
     "yaml": "^2.6.0",
     "yup": "^1.4.0",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "@prisma/client": "^6.19.0"
+  },
+  "devDependencies": {
+    "prisma": "^6.19.0"
   }
 }

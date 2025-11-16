@@ -1,0 +1,17 @@
+// Prisma schema for Mindbridge X (SQLite)
+// Additional models will be added as persistence expands.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model HealthCheck {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  note      String?
+}
