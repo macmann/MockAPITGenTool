@@ -1,5 +1,7 @@
 node_modules/
 .env
+.next/
+.turbo/
 .DS_Store
 gui-mock-api/data.sqlite*
 mockapis.db*
