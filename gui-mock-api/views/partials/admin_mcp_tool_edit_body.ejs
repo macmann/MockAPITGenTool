@@ -1,0 +1,368 @@
+<%
+  const properties = inputSchema?.properties || {};
+  const requiredSet = new Set(inputSchema?.required || []);
+  const pathPlaceholders = Array.from(
+    new Set((tool?.path_template || '').match(/\{([^}]+)\}/g)?.map((p) => p.replace(/^{|}$/g, '')) || [])
+  );
+  const queryEntries = Object.entries(queryMapping || {});
+  const bodyEntries = Object.entries(bodyMapping || {});
+  const headerEntries = Object.entries(headersMapping || {});
+%>
+
+<section class="card">
+  <header class="flex" style="justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
+    <div>
+      <h2 style="margin-bottom: 0.25rem;">Edit MCP Tool – <%= tool.name %></h2>
+      <p class="muted" style="margin: 0;">Map MCP arguments to HTTP request path, query, body, and headers.</p>
+    </div>
+    <div class="flex" style="gap: 0.5rem;">
+      <a class="secondary" href="/admin/mcp/<%= mcpServer.id %>/tools?key=<%= encodeURIComponent(key) %>">Back to tools</a>
+    </div>
+  </header>
+</section>
+
+<form method="post" action="/admin/mcp/<%= mcpServer.id %>/tools/<%= tool.id %>/edit?key=<%= encodeURIComponent(key) %>" class="card" style="margin-top: 1rem;">
+  <input type="hidden" name="key" value="<%= key %>">
+
+  <div class="grid" style="gap: 1rem;">
+    <label class="stack">
+      <span>Name</span>
+      <input type="text" name="name" value="<%= tool.name %>" required />
+      <small class="muted">Used in MCP manifest. Letters, numbers, dashes, underscores only.</small>
+    </label>
+    <label class="stack">
+      <span>HTTP Method</span>
+      <select name="http_method">
+        <% ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].forEach((method) => { %>
+          <option value="<%= method %>" <%= (tool.http_method || '').toUpperCase() === method ? 'selected' : '' %>><%= method %></option>
+        <% }); %>
+      </select>
+      <small class="muted">Method used when calling the upstream API.</small>
+    </label>
+  </div>
+
+  <label class="stack">
+    <span>Description</span>
+    <textarea name="description" rows="2" placeholder="Describe what this tool does"><%= tool.description || '' %></textarea>
+  </label>
+
+  <div class="grid" style="gap: 1rem;">
+    <label class="stack">
+      <span>Base URL</span>
+      <input type="url" name="base_url" value="<%= tool.base_url || '' %>" placeholder="https://api.example.com" />
+      <small class="muted">Optional override for this tool. Falls back to MCP server base URL.</small>
+    </label>
+    <label class="stack">
+      <span>Path template</span>
+      <input type="text" name="path_template" value="<%= tool.path_template || '' %>" placeholder="/v1/resource/{id}" />
+      <small class="muted">Use curly braces for path params, e.g. <code>{id}</code>.</small>
+    </label>
+  </div>
+
+  <div class="tabs" data-tabs>
+    <button type="button" class="tab active" data-tab="args">Arguments</button>
+    <button type="button" class="tab" data-tab="path">Path</button>
+    <button type="button" class="tab" data-tab="query">Query</button>
+    <button type="button" class="tab" data-tab="body">Body</button>
+    <button type="button" class="tab" data-tab="headers">Headers</button>
+  </div>
+
+  <div class="tab-panel active" data-tab-panel="args">
+    <div class="flex" style="justify-content: space-between; align-items: center; gap: 0.5rem;">
+      <div>
+        <h4 style="margin: 0;">Arguments</h4>
+        <p class="muted" style="margin: 0;">Define the arguments exposed to MCP clients.</p>
+      </div>
+      <button type="button" class="secondary" data-add-arg>Add argument</button>
+    </div>
+    <table class="table-compact" data-arg-table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Required</th>
+          <th>Description</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% const argKeys = Object.keys(properties); if (argKeys.length === 0) { %>
+          <tr class="muted" data-empty-args>
+            <td colspan="5">No arguments yet. Add one to start mapping.</td>
+          </tr>
+        <% } %>
+        <% for (const [argName, schema] of Object.entries(properties)) { %>
+          <tr>
+            <td><input type="text" name="args[name]" value="<%= argName %>" required /></td>
+            <td>
+              <select name="args[type]">
+                <% ['string', 'number', 'integer', 'boolean', 'object', 'array'].forEach((t) => { %>
+                  <option value="<%= t %>" <%= (schema?.type || 'string') === t ? 'selected' : '' %>><%= t %></option>
+                <% }); %>
+              </select>
+            </td>
+            <td style="text-align: center;">
+              <input type="checkbox" name="args[required]" <%= requiredSet.has(argName) ? 'checked' : '' %> />
+            </td>
+            <td><input type="text" name="args[description]" value="<%= schema?.description || '' %>" /></td>
+            <td><button type="button" class="secondary" data-remove-row>&times;</button></td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="tab-panel" data-tab-panel="path">
+    <h4 style="margin: 0;">Path mapping</h4>
+    <p class="muted">Current template: <code><%= tool.path_template || '/' %></code></p>
+    <% if (pathPlaceholders.length === 0) { %>
+      <p class="muted" style="margin: 0;">No placeholders detected. Add <code>{param}</code> names to the path to map arguments.</p>
+    <% } else { %>
+      <ul>
+        <% pathPlaceholders.forEach((p) => { %>
+          <li><strong><%= p %></strong> → expects an argument named <code><%= p %></code></li>
+        <% }); %>
+      </ul>
+    <% } %>
+  </div>
+
+  <div class="tab-panel" data-tab-panel="query">
+    <div class="flex" style="justify-content: space-between; align-items: center; gap: 0.5rem;">
+      <div>
+        <h4 style="margin: 0;">Query mapping</h4>
+        <p class="muted" style="margin: 0;">Map arguments to query string parameters.</p>
+      </div>
+      <button type="button" class="secondary" data-add-query>Add query param</button>
+    </div>
+    <table class="table-compact" data-query-table>
+      <thead>
+        <tr>
+          <th>Query key</th>
+          <th>Argument name</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (queryEntries.length === 0) { %>
+          <tr class="muted" data-empty-query>
+            <td colspan="3">No query parameters mapped.</td>
+          </tr>
+        <% } %>
+        <% for (const [qKey, qArg] of queryEntries) { %>
+          <tr>
+            <td><input type="text" name="query[key]" value="<%= qKey %>" /></td>
+            <td><input type="text" name="query[arg]" value="<%= qArg %>" /></td>
+            <td><button type="button" class="secondary" data-remove-row>&times;</button></td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="tab-panel" data-tab-panel="body">
+    <div class="flex" style="justify-content: space-between; align-items: center; gap: 0.5rem;">
+      <div>
+        <h4 style="margin: 0;">Body mapping</h4>
+        <p class="muted" style="margin: 0;">Send arguments as a JSON object in the request body.</p>
+      </div>
+      <button type="button" class="secondary" data-add-body>Add body field</button>
+    </div>
+    <table class="table-compact" data-body-table>
+      <thead>
+        <tr>
+          <th>Body key</th>
+          <th>Argument name</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (bodyEntries.length === 0) { %>
+          <tr class="muted" data-empty-body>
+            <td colspan="3">No body fields mapped.</td>
+          </tr>
+        <% } %>
+        <% for (const [bKey, bArg] of bodyEntries) { %>
+          <tr>
+            <td><input type="text" name="body[key]" value="<%= bKey %>" /></td>
+            <td><input type="text" name="body[arg]" value="<%= bArg %>" /></td>
+            <td><button type="button" class="secondary" data-remove-row>&times;</button></td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="tab-panel" data-tab-panel="headers">
+    <div class="flex" style="justify-content: space-between; align-items: center; gap: 0.5rem;">
+      <div>
+        <h4 style="margin: 0;">Headers</h4>
+        <p class="muted" style="margin: 0;">Use static values or pull from arguments.</p>
+      </div>
+      <button type="button" class="secondary" data-add-header>Add header</button>
+    </div>
+    <table class="table-compact" data-headers-table>
+      <thead>
+        <tr>
+          <th>Header name</th>
+          <th>Source</th>
+          <th>Value</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (headerEntries.length === 0) { %>
+          <tr class="muted" data-empty-headers>
+            <td colspan="4">No headers configured.</td>
+          </tr>
+        <% } %>
+        <% for (const [hName, hValue] of headerEntries) { %>
+          <% const isArg = typeof hValue === 'object'; %>
+          <tr>
+            <td><input type="text" name="headers[name]" value="<%= hName %>" /></td>
+            <td>
+              <select name="headers[source]" data-header-source>
+                <option value="static" <%= !isArg ? 'selected' : '' %>>Static</option>
+                <option value="argument" <%= isArg ? 'selected' : '' %>>Argument</option>
+              </select>
+            </td>
+            <td>
+              <div class="grid" style="grid-template-columns: 1fr; gap: 0.35rem;">
+                <input type="text" name="headers[value]" value="<%= !isArg ? hValue : '' %>" placeholder="Static value" data-header-static <%= isArg ? 'style="display:none;"' : '' %> />
+                <input type="text" name="headers[arg]" value="<%= isArg ? hValue.fromArg : '' %>" placeholder="Argument name" data-header-arg <%= !isArg ? 'style="display:none;"' : '' %> />
+              </div>
+            </td>
+            <td><button type="button" class="secondary" data-remove-row>&times;</button></td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="flex" style="margin-top: 1.5rem; justify-content: flex-end; gap: 0.5rem;">
+    <a class="secondary" href="/admin/mcp/<%= mcpServer.id %>/tools?key=<%= encodeURIComponent(key) %>">Cancel</a>
+    <button type="submit" class="button primary">Save Tool</button>
+  </div>
+</form>
+
+<section class="card" style="margin-top: 1rem;">
+  <h3>Authentication</h3>
+  <% if (authConfig) { %>
+    <p><strong>Type:</strong> <%= authConfig.auth_type || 'none' %></p>
+    <% if (authConfig.auth_type === 'api_key_header') { %>
+      <p><strong>Header:</strong> <%= authConfig.api_key_header_name || 'X-API-Key' %></p>
+    <% } %>
+  <% } else { %>
+    <p class="muted">No auth config set for this MCP server.</p>
+  <% } %>
+  <p><a href="/admin/mcp/<%= mcpServer.id %>?key=<%= encodeURIComponent(key) %>">Edit auth config</a></p>
+</section>
+
+<section class="card" style="margin-top: 1rem;">
+  <h3>Request preview</h3>
+  <p style="margin: 0.25rem 0;"><strong>Method:</strong> <code><%= (tool.http_method || 'GET').toUpperCase() %></code></p>
+  <p style="margin: 0.25rem 0;"><strong>URL:</strong> <code><%= (tool.base_url || mcpServer.base_url || '') + (tool.path_template || '') %></code></p>
+  <p class="muted" style="margin: 0.25rem 0;">Query params, body, and headers will be filled from your mappings.</p>
+</section>
+
+<script>
+  (function () {
+    function addRow(table, cellsHtml) {
+      const tbody = table.querySelector('tbody');
+      const emptyRow = tbody.querySelector('[data-empty-args], [data-empty-query], [data-empty-body], [data-empty-headers]');
+      if (emptyRow) emptyRow.remove();
+      const tr = document.createElement('tr');
+      tr.innerHTML = cellsHtml;
+      tbody.appendChild(tr);
+    }
+
+    function rowControls(selector, markupFactory) {
+      const table = document.querySelector(selector);
+      if (!table) return;
+
+      table.addEventListener('click', (event) => {
+        const removeBtn = event.target.closest('[data-remove-row]');
+        if (removeBtn) {
+          const row = removeBtn.closest('tr');
+          row?.remove();
+        }
+      });
+
+      return {
+        add: () => addRow(table, markupFactory())
+      };
+    }
+
+    const argControls = rowControls('[data-arg-table]', () => `
+        <td><input type="text" name="args[name]" required /></td>
+        <td>
+          <select name="args[type]">
+            <option value="string">string</option>
+            <option value="number">number</option>
+            <option value="integer">integer</option>
+            <option value="boolean">boolean</option>
+            <option value="object">object</option>
+            <option value="array">array</option>
+          </select>
+        </td>
+        <td style="text-align: center;"><input type="checkbox" name="args[required]" /></td>
+        <td><input type="text" name="args[description]" /></td>
+        <td><button type="button" class="secondary" data-remove-row>&times;</button></td>
+      `);
+
+    const queryControls = rowControls('[data-query-table]', () => `
+        <td><input type="text" name="query[key]" /></td>
+        <td><input type="text" name="query[arg]" /></td>
+        <td><button type="button" class="secondary" data-remove-row>&times;</button></td>
+      `);
+
+    const bodyControls = rowControls('[data-body-table]', () => `
+        <td><input type="text" name="body[key]" /></td>
+        <td><input type="text" name="body[arg]" /></td>
+        <td><button type="button" class="secondary" data-remove-row>&times;</button></td>
+      `);
+
+    const headerControls = rowControls('[data-headers-table]', () => `
+        <td><input type="text" name="headers[name]" /></td>
+        <td>
+          <select name="headers[source]" data-header-source>
+            <option value="static">Static</option>
+            <option value="argument">Argument</option>
+          </select>
+        </td>
+        <td>
+          <div class="grid" style="grid-template-columns: 1fr; gap: 0.35rem;">
+            <input type="text" name="headers[value]" placeholder="Static value" data-header-static />
+            <input type="text" name="headers[arg]" placeholder="Argument name" data-header-arg style="display:none;" />
+          </div>
+        </td>
+        <td><button type="button" class="secondary" data-remove-row>&times;</button></td>
+      `);
+
+    document.querySelector('[data-add-arg]')?.addEventListener('click', () => argControls?.add());
+    document.querySelector('[data-add-query]')?.addEventListener('click', () => queryControls?.add());
+    document.querySelector('[data-add-body]')?.addEventListener('click', () => bodyControls?.add());
+    document.querySelector('[data-add-header]')?.addEventListener('click', () => headerControls?.add());
+
+    function refreshHeaderInputs(row) {
+      const source = row.querySelector('[data-header-source]')?.value || 'static';
+      const staticInput = row.querySelector('[data-header-static]');
+      const argInput = row.querySelector('[data-header-arg]');
+      if (source === 'argument') {
+        if (staticInput) staticInput.style.display = 'none';
+        if (argInput) argInput.style.display = '';
+      } else {
+        if (staticInput) staticInput.style.display = '';
+        if (argInput) argInput.style.display = 'none';
+      }
+    }
+
+    document.querySelector('[data-headers-table]')?.addEventListener('change', (event) => {
+      if (event.target.matches('[data-header-source]')) {
+        const row = event.target.closest('tr');
+        if (row) refreshHeaderInputs(row);
+      }
+    });
+
+    document.querySelectorAll('[data-headers-table] tr').forEach((row) => refreshHeaderInputs(row));
+  })();
+</script>

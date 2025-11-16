@@ -49,6 +49,7 @@
               <td><%= t.description || '' %></td>
               <td>
                 <div class="table-actions">
+                  <a class="secondary" href="/admin/mcp/<%= mcpServer.id %>/tools/<%= t.id %>/edit<%= adminKeyParam %>">Edit</a>
                   <form method="post" action="/admin/mcp/<%= mcpServer.id %>/tools/<%= t.id %>/delete<%= adminKeyParam %>" onsubmit="return confirm('Delete this tool?');">
                     <button class="button contrast" type="submit">Delete</button>
                   </form>

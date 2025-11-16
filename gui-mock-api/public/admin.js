@@ -212,7 +212,26 @@
         }
       }
 
-      templateSelect.value = '';
+    templateSelect.value = '';
+  });
+}
+})();
+
+(function () {
+  const tabGroups = document.querySelectorAll('[data-tabs]');
+  tabGroups.forEach((group) => {
+    const buttons = group.querySelectorAll('.tab');
+    const panelContainer = group.parentElement;
+    const panels = panelContainer ? panelContainer.querySelectorAll('.tab-panel') : [];
+
+    buttons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const target = btn.getAttribute('data-tab');
+        buttons.forEach((b) => b.classList.toggle('active', b === btn));
+        panels.forEach((panel) => {
+          panel.classList.toggle('active', panel.getAttribute('data-tab-panel') === target);
+        });
+      });
     });
-  }
+  });
 })();
