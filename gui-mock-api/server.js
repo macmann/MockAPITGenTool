@@ -29,11 +29,14 @@ import {
   setMcpServerEnabled,
   listExistingApiDefinitions,
   getExistingApiById,
+  getMcpToolById,
   createMcpTool,
   listMcpTools,
   listMcpToolsWithEndpoints,
   upsertMcpTool,
+  updateMcpTool,
   deleteMcpTool,
+  getMcpAuthConfigByServerId,
   slugifyMcpSlug
 } from './db.js';
 import { createMcpRouter } from '../mcp-express.js';
@@ -1194,6 +1197,213 @@ app.get('/admin/mcp/:id/tools', requireAdmin, (req, res) => {
   const viewModel = buildMcpToolsRenderData(req, mcpServer, key);
 
   res.render('admin_mcp_tools', viewModel);
+});
+
+app.get('/admin/mcp/:serverId/tools/:toolId/edit', requireAdmin, async (req, res, next) => {
+  const { serverId, toolId } = req.params;
+  const key = getAdminKeyValue(req, res);
+
+  try {
+    const mcpServer = getMcpServerWithTools(serverId, { includeDisabled: true });
+    if (!mcpServer) {
+      return res.status(404).send('MCP server not found');
+    }
+
+    const tool = getMcpToolById(toolId);
+    if (!tool || tool.mcp_server_id !== mcpServer.id) {
+      return res.status(404).send('Tool not found');
+    }
+
+    const inputSchema = tool.input_schema_json
+      ? JSON.parse(tool.input_schema_json)
+      : { type: 'object', properties: {}, additionalProperties: true };
+
+    const queryMapping = tool.query_mapping_json ? JSON.parse(tool.query_mapping_json) : {};
+    const bodyMapping = tool.body_mapping_json ? JSON.parse(tool.body_mapping_json) : {};
+    const headersMapping = tool.headers_mapping_json ? JSON.parse(tool.headers_mapping_json) : {};
+
+    const authConfig = getMcpAuthConfigByServerId(serverId);
+
+    res.render('admin_mcp_tool_edit', {
+      title: `Edit MCP Tool – ${tool.name}`,
+      mcpServer,
+      tool,
+      inputSchema,
+      queryMapping,
+      bodyMapping,
+      headersMapping,
+      authConfig,
+      key
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.post('/admin/mcp/:serverId/tools/:toolId/edit', requireAdmin, async (req, res, next) => {
+  const { serverId, toolId } = req.params;
+  const key = getAdminKeyValue(req, res);
+
+  try {
+    const tool = getMcpToolById(toolId);
+    if (!tool || String(tool.mcp_server_id) !== String(serverId)) {
+      return res.status(404).send('Tool not found');
+    }
+
+    const name = (req.body.name || '').trim();
+    const description = (req.body.description || '').trim();
+    const httpMethod = (req.body.http_method || tool.http_method || 'GET').toUpperCase();
+    const baseUrl = (req.body.base_url || '').trim();
+    const pathTemplate = (req.body.path_template || '').trim();
+
+    const argNames = Array.isArray(req.body['args[name]'])
+      ? req.body['args[name]']
+      : req.body['args[name]']
+      ? [req.body['args[name]']]
+      : [];
+
+    const argTypes = Array.isArray(req.body['args[type]'])
+      ? req.body['args[type]']
+      : req.body['args[type]']
+      ? [req.body['args[type]']]
+      : [];
+
+    const argRequired = Array.isArray(req.body['args[required]'])
+      ? req.body['args[required]']
+      : req.body['args[required]']
+      ? [req.body['args[required]']]
+      : [];
+
+    const argDescriptions = Array.isArray(req.body['args[description]'])
+      ? req.body['args[description]']
+      : req.body['args[description]']
+      ? [req.body['args[description]']]
+      : [];
+
+    const properties = {};
+    const required = [];
+
+    for (let i = 0; i < argNames.length; i++) {
+      const rawName = (argNames[i] || '').trim();
+      if (!rawName) continue;
+      const type = (argTypes[i] || 'string').trim() || 'string';
+      const desc = (argDescriptions[i] || '').trim();
+      const isRequired = Array.isArray(argRequired)
+        ? argRequired[i] === 'true' || argRequired[i] === 'on'
+        : false;
+
+      properties[rawName] = {
+        type,
+        description: desc
+      };
+      if (isRequired) {
+        required.push(rawName);
+      }
+    }
+
+    const inputSchema = {
+      type: 'object',
+      properties,
+      required,
+      additionalProperties: true
+    };
+
+    const qKeys = Array.isArray(req.body['query[key]'])
+      ? req.body['query[key]']
+      : req.body['query[key]']
+      ? [req.body['query[key]']]
+      : [];
+
+    const qArgs = Array.isArray(req.body['query[arg]'])
+      ? req.body['query[arg]']
+      : req.body['query[arg]']
+      ? [req.body['query[arg]']]
+      : [];
+
+    const queryMapping = {};
+    for (let i = 0; i < qKeys.length; i++) {
+      const qKey = (qKeys[i] || '').trim();
+      const qArg = (qArgs[i] || '').trim();
+      if (!qKey || !qArg) continue;
+      queryMapping[qKey] = qArg;
+    }
+
+    const bKeys = Array.isArray(req.body['body[key]'])
+      ? req.body['body[key]']
+      : req.body['body[key]']
+      ? [req.body['body[key]']]
+      : [];
+
+    const bArgs = Array.isArray(req.body['body[arg]'])
+      ? req.body['body[arg]']
+      : req.body['body[arg]']
+      ? [req.body['body[arg]']]
+      : [];
+
+    const bodyMapping = {};
+    for (let i = 0; i < bKeys.length; i++) {
+      const bKey = (bKeys[i] || '').trim();
+      const bArg = (bArgs[i] || '').trim();
+      if (!bKey || !bArg) continue;
+      bodyMapping[bKey] = bArg;
+    }
+
+    const hNames = Array.isArray(req.body['headers[name]'])
+      ? req.body['headers[name]']
+      : req.body['headers[name]']
+      ? [req.body['headers[name]']]
+      : [];
+
+    const hSources = Array.isArray(req.body['headers[source]'])
+      ? req.body['headers[source]']
+      : req.body['headers[source]']
+      ? [req.body['headers[source]']]
+      : [];
+
+    const hValues = Array.isArray(req.body['headers[value]'])
+      ? req.body['headers[value]']
+      : req.body['headers[value]']
+      ? [req.body['headers[value]']]
+      : [];
+
+    const hArgs = Array.isArray(req.body['headers[arg]'])
+      ? req.body['headers[arg]']
+      : req.body['headers[arg]']
+      ? [req.body['headers[arg]']]
+      : [];
+
+    const headersMapping = {};
+    for (let i = 0; i < hNames.length; i++) {
+      const headerName = (hNames[i] || '').trim();
+      if (!headerName) continue;
+      const source = (hSources[i] || 'static').trim();
+      if (source === 'static') {
+        const value = (hValues[i] || '').trim();
+        if (!value) continue;
+        headersMapping[headerName] = value;
+      } else if (source === 'argument') {
+        const arg = (hArgs[i] || '').trim();
+        if (!arg) continue;
+        headersMapping[headerName] = { fromArg: arg };
+      }
+    }
+
+    await updateMcpTool(toolId, {
+      name,
+      description,
+      http_method: httpMethod,
+      base_url: baseUrl,
+      path_template: pathTemplate,
+      input_schema_json: JSON.stringify(inputSchema),
+      query_mapping_json: JSON.stringify(queryMapping),
+      body_mapping_json: JSON.stringify(bodyMapping),
+      headers_mapping_json: JSON.stringify(headersMapping)
+    });
+
+    res.redirect(`/admin/mcp/${encodeURIComponent(serverId)}/tools?key=${encodeURIComponent(key)}`);
+  } catch (err) {
+    next(err);
+  }
 });
 
 app.post('/admin/mcp/:id/tools/from-existing', requireAdmin, (req, res) => {

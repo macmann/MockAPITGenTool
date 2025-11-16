@@ -1,0 +1,14 @@
+<%
+  const pageTitle = title || `Edit MCP Tool · ${tool?.name || 'MCP Tool'}`;
+  const body = include('partials/admin_mcp_tool_edit_body', {
+    mcpServer,
+    tool,
+    inputSchema,
+    queryMapping,
+    bodyMapping,
+    headersMapping,
+    authConfig,
+    key
+  });
+%>
+<%- include('layout', { title: pageTitle, body, adminKey: key }) %>

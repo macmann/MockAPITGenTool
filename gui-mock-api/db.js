@@ -646,6 +646,10 @@ export function getMcpTool(id) {
   return normalizeMcpTool(row);
 }
 
+export function getMcpToolById(id) {
+  return getMcpTool(id);
+}
+
 export function getMcpToolByName(mcpServerId, name) {
   if (!mcpServerId || !name) return null;
   const row = db
