@@ -168,6 +168,8 @@
                     <input type="hidden" name="ops[<%= index %>][method]" value="<%= op.method %>" />
                     <input type="hidden" name="ops[<%= index %>][path]" value="<%= op.path %>" />
                     <input type="hidden" name="ops[<%= index %>][operationId]" value="<%= op.operationId %>" />
+                    <input type="hidden" name="ops[<%= index %>][parametersJson]" value="<%= JSON.stringify(op.parameters || []) %>" />
+                    <input type="hidden" name="ops[<%= index %>][requestBodyJson]" value="<%= JSON.stringify(op.requestBody || null) %>" />
                   </td>
                 </tr>
               <% }); %>
