@@ -7,14 +7,17 @@ import createError from 'http-errors';
 import { fileURLToPath } from 'url';
 import { nanoid } from 'nanoid';
 import YAML from 'yaml';
+import { getServerSession } from 'next-auth';
 
 import { prisma } from '../lib/prisma.js';
 import {
   detectSpecFormat,
-  persistOpenApiSpecForDemo,
-  replaceToolMappingsForDemo,
-  upsertApiConnectionForDemo
+  persistOpenApiSpecForUser,
+  replaceToolMappingsForUser,
+  upsertApiConnectionForUser
 } from '../lib/openapi-persistence.js';
+import { ensureDefaultProjectForUser } from '../lib/user-context.js';
+import { authOptions } from '../lib/auth.js';
 import { buildRuntimeRouter } from './router-runtime.js';
 import {
   allEndpoints,
@@ -57,6 +60,17 @@ app.locals.prisma = prisma;
 const ADMIN_KEY = process.env.ADMIN_KEY || process.env.ADMIN_TOKEN || process.env.ADMIN_SECRET || '';
 const SUPPORTED_HTTP_METHODS = new Set(['GET', 'POST', 'PUT', 'DELETE', 'PATCH']);
 const SUPPORTED_AUTH_TYPES = new Set(['none', 'api_key_header', 'api_key_query', 'bearer_token', 'basic']);
+
+async function getUserContext(req, res) {
+  const session = await getServerSession(req, res, authOptions);
+  const userId = Number(session?.user?.id);
+  if (!userId) {
+    return null;
+  }
+
+  const { project, user } = await ensureDefaultProjectForUser(userId, prisma);
+  return { session, user, project };
+}
 
 function truncateHeadersForLog(headers = {}) {
   const out = {};
@@ -1665,6 +1679,11 @@ app.post('/admin/mcp/:id/tools/openapi/preview', requireAdmin, async (req, res) 
   const key = req.body.key || '';
   const rawSpec = req.body.openapi_spec || '';
 
+  const userContext = await getUserContext(req, res);
+  if (!userContext) {
+    return res.status(401).send('Authentication is required to preview OpenAPI specs.');
+  }
+
   let parsed;
   try {
     try {
@@ -1686,7 +1705,9 @@ app.post('/admin/mcp/:id/tools/openapi/preview', requireAdmin, async (req, res) 
 
   let persistedSpec = null;
   try {
-    persistedSpec = await persistOpenApiSpecForDemo({
+    persistedSpec = await persistOpenApiSpecForUser({
+      userId: userContext.user.id,
+      projectId: userContext.project.id,
       rawSpec,
       format: detectSpecFormat(rawSpec)
     });
@@ -1745,6 +1766,11 @@ app.post('/admin/mcp/:id/tools/openapi/save', requireAdmin, async (req, res) => 
   const openapiSpecIdRaw = req.body.openapi_spec_id;
   const openapiSpecId = Number.isFinite(Number(openapiSpecIdRaw)) ? Number(openapiSpecIdRaw) : null;
 
+  const userContext = await getUserContext(req, res);
+  if (!userContext) {
+    return res.status(401).send('Authentication is required to save OpenAPI-generated tools.');
+  }
+
   const opsInput = req.body.ops || [];
   const opsArray = Array.isArray(opsInput) ? opsInput : Object.values(opsInput);
   const normalizedOps = opsArray.map((op, index) => normalizeOpenapiOperationInput(op, index));
@@ -1764,7 +1790,9 @@ app.post('/admin/mcp/:id/tools/openapi/save', requireAdmin, async (req, res) => 
 
   let persistedSpec = null;
   try {
-    persistedSpec = await persistOpenApiSpecForDemo({
+    persistedSpec = await persistOpenApiSpecForUser({
+      userId: userContext.user.id,
+      projectId: userContext.project.id,
       rawSpec: rawOpenapiSpec,
       format: detectSpecFormat(rawOpenapiSpec),
       existingSpecId: openapiSpecId
@@ -1775,7 +1803,9 @@ app.post('/admin/mcp/:id/tools/openapi/save', requireAdmin, async (req, res) => 
 
   let persistedConnection = null;
   try {
-    persistedConnection = await upsertApiConnectionForDemo({
+    persistedConnection = await upsertApiConnectionForUser({
+      userId: userContext.user.id,
+      projectId: userContext.project.id,
       baseUrl,
       auth: inferredAuth
     });
@@ -1906,14 +1936,16 @@ app.post('/admin/mcp/:id/tools/openapi/save', requireAdmin, async (req, res) => 
 
   let mappingError = '';
   try {
-    await replaceToolMappingsForDemo({
+    await replaceToolMappingsForUser({
+      userId: userContext.user.id,
+      projectId: userContext.project.id,
       operations: selectedOpsForMapping,
       openApiSpecId: (persistedSpec && persistedSpec.id) || openapiSpecId || null,
       apiConnectionId: persistedConnection?.id || null
     });
   } catch (err) {
-    console.error('Failed to persist tool mappings for demo project', err);
-    mappingError = 'Failed to persist tool mappings for the demo project.';
+    console.error('Failed to persist tool mappings for user project', err);
+    mappingError = 'Failed to persist tool mappings for your project.';
   }
 
   if (mappingError) {

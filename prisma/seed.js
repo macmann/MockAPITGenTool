@@ -1,41 +1,27 @@
 import { PrismaClient } from '@prisma/client'
-import { DEFAULT_PROJECT_NAME, DEMO_USER_EMAIL, DEMO_USER_NAME } from '../lib/demo-constants.js'
+import { hash } from 'bcryptjs'
+
+import { ensureDefaultProjectForUser } from '../lib/user-context.js'
 
 const prisma = new PrismaClient()
 
 async function main() {
-  const demoEmail = DEMO_USER_EMAIL
-  const demoName = DEMO_USER_NAME
-  const defaultProjectName = DEFAULT_PROJECT_NAME
+  const adminEmail = (process.env.ADMIN_DEFAULT_EMAIL || 'admin@example.com').toLowerCase()
+  const adminPassword = process.env.ADMIN_DEFAULT_PASSWORD || 'password'
 
-  const user = await prisma.user.upsert({
-    where: { email: demoEmail },
-    update: { name: demoName },
+  const passwordHash = await hash(adminPassword, 10)
+
+  const adminUser = await prisma.user.upsert({
+    where: { email: adminEmail },
+    update: { name: 'Admin User', passwordHash },
     create: {
-      email: demoEmail,
-      name: demoName,
-      projects: {
-        create: {
-          name: defaultProjectName,
-          description: 'Starter project for development',
-        },
-      },
+      email: adminEmail,
+      name: 'Admin User',
+      passwordHash,
     },
   })
 
-  const existingProject = await prisma.project.findFirst({
-    where: { userId: user.id, name: defaultProjectName },
-  })
-
-  if (!existingProject) {
-    await prisma.project.create({
-      data: {
-        name: defaultProjectName,
-        description: 'Starter project for development',
-        userId: user.id,
-      },
-    })
-  }
+  await ensureDefaultProjectForUser(adminUser.id, prisma)
 }
 
 main()
