@@ -729,7 +729,7 @@ app.get('/', (req, res) => {
   const adminKeyValue = getAdminKeyValue(req, res);
 
   res.render('home', {
-    title: 'Brillar API Tool',
+    title: 'MindBridge X',
     adminKey: adminKeyValue,
     stats: {
       endpoints: endpoints.length,

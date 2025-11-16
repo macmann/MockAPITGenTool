@@ -1,6 +1,6 @@
-# API MCP Gen Tool
+# MindBridge X
 
-A full-stack playground for rapidly designing mock REST endpoints, testing payloads, and exposing them to Model Context Protocol (MCP) clients. The project bundles three complementary pieces:
+MindBridge X is a full-stack playground for rapidly designing mock REST endpoints, testing payloads, and exposing them to Model Context Protocol (MCP) clients. The project bundles three complementary pieces:
 
 - **Mock API web server** – An Express application with an admin dashboard for creating endpoints, templating responses, storing request logs, and publishing OpenAPI snippets.
 - **MCP bridge** – Turns selected mock endpoints into MCP tools so assistants can call them through `/mcp/:slug` JSON-RPC endpoints.

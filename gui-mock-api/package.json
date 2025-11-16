@@ -1,7 +1,7 @@
 {
   "name": "gui-mock-api",
   "version": "1.0.0",
-  "description": "Mock API generator GUI server",
+  "description": "MindBridge X GUI for bridging APIs into MCP tools",
   "type": "module",
   "main": "server.js",
   "scripts": {

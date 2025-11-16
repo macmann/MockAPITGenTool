@@ -13,7 +13,7 @@ export function startServer(options = {}) {
   const { port = DEFAULT_PORT } = options;
   const server = createHttpServer();
   server.listen(port, () => {
-    console.log(`[WEB] Mock API Tool listening on port ${port}`);
+    console.log(`[WEB] MindBridge X listening on port ${port}`);
   });
   return server;
 }

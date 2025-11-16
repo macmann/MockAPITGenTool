@@ -36,25 +36,26 @@
       .home-hero {
         position: relative;
         overflow: hidden;
-        background: radial-gradient(circle at top left, rgba(13, 110, 253, 0.25), transparent 60%),
-          radial-gradient(circle at bottom right, rgba(102, 16, 242, 0.2), transparent 55%),
-          #ffffff;
+        background: radial-gradient(circle at 15% 20%, rgba(34, 211, 238, 0.28), transparent 55%),
+          radial-gradient(circle at 85% 0%, rgba(192, 132, 252, 0.25), transparent 50%),
+          linear-gradient(135deg, rgba(11, 16, 32, 0.92), rgba(18, 25, 46, 0.95));
         border-radius: 1.75rem;
         padding: 3rem clamp(1.5rem, 4vw, 3rem);
         margin-bottom: 2.5rem;
-        box-shadow: 0 1.5rem 3.5rem rgba(13, 110, 253, 0.1);
+        box-shadow: 0 1.5rem 3.5rem rgba(12, 18, 42, 0.5);
       }
 
       .home-hero h2 {
         font-size: clamp(2.2rem, 4vw, 3rem);
         margin-bottom: 0.5rem;
+        color: #e9ecf5;
       }
 
       .home-hero p {
         max-width: 48rem;
         font-size: 1.05rem;
         line-height: 1.6;
-        color: #4c566a;
+        color: #c3c7d3;
       }
 
       .hero-actions {
@@ -65,9 +66,9 @@
       }
 
       .hero-actions .secondary {
-        --pico-color: #0d6efd;
-        border: 1px solid rgba(13, 110, 253, 0.35);
-        background: rgba(255, 255, 255, 0.8);
+        --pico-color: #22d3ee;
+        border: 1px solid rgba(34, 211, 238, 0.4);
+        background: rgba(11, 16, 32, 0.7);
       }
 
       .home-stats {
@@ -78,12 +79,12 @@
       }
 
       .stat-card {
-        background: linear-gradient(135deg, rgba(13, 110, 253, 0.08), rgba(13, 110, 253, 0));
-        border: 1px solid rgba(13, 110, 253, 0.12);
+        background: linear-gradient(135deg, rgba(34, 211, 238, 0.08), rgba(192, 132, 252, 0.08));
+        border: 1px solid rgba(34, 211, 238, 0.18);
         border-radius: 1.25rem;
         padding: 1.5rem;
         text-align: left;
-        box-shadow: 0 1rem 2.25rem rgba(13, 110, 253, 0.08);
+        box-shadow: 0 1rem 2.25rem rgba(12, 18, 42, 0.45);
       }
 
       .stat-card h3 {
@@ -113,13 +114,13 @@
       }
 
       .home-card {
-        background: #fff;
+        background: #0f162b;
         border-radius: 1.5rem;
         padding: 1.75rem;
         position: relative;
         overflow: hidden;
-        border: 1px solid rgba(13, 110, 253, 0.12);
-        box-shadow: 0 1.25rem 2.5rem rgba(13, 110, 253, 0.08);
+        border: 1px solid rgba(34, 211, 238, 0.18);
+        box-shadow: 0 1.25rem 2.5rem rgba(12, 18, 42, 0.5);
         display: flex;
         flex-direction: column;
         gap: 1.25rem;
@@ -132,11 +133,11 @@
       .home-card__heading {
         font-size: 1.35rem;
         margin: 0;
-        color: #0d1b2a;
+        color: #e9ecf5;
       }
 
       .home-card__description {
-        color: #4c566a;
+        color: #c3c7d3;
         margin: 0;
       }
 
@@ -161,7 +162,7 @@
         grid-template-columns: auto 1fr;
         gap: 0.75rem;
         padding: 0.65rem 0.9rem;
-        background: rgba(13, 110, 253, 0.06);
+        background: rgba(34, 211, 238, 0.08);
         border-radius: 1rem;
         align-items: center;
       }
@@ -171,9 +172,9 @@
         height: 2.5rem;
         display: grid;
         place-items: center;
-        background: #fff;
+        background: #0b1020;
         border-radius: 50%;
-        box-shadow: 0 0.75rem 1.75rem rgba(13, 110, 253, 0.12);
+        box-shadow: 0 0.75rem 1.75rem rgba(34, 211, 238, 0.12);
       }
 
       .card-pill__title {
@@ -182,7 +183,7 @@
 
       .card-pill__meta {
         font-size: 0.85rem;
-        color: #4c566a;
+        color: #c3c7d3;
       }
 
       .status {
@@ -192,11 +193,11 @@
       }
 
       .status--success {
-        color: #0f5132;
+        color: #10b981;
       }
 
       .status--muted {
-        color: #6c757d;
+        color: #c3c7d3;
       }
 
       .home-card__footer {
@@ -205,12 +206,12 @@
 
       .home-card__footer a.button,
       .hero-actions a.button {
-        box-shadow: 0 0.75rem 2rem rgba(13, 110, 253, 0.25);
+        box-shadow: 0 0.75rem 2rem rgba(34, 211, 238, 0.35);
       }
 
       .home-card__footer a.secondary {
-        border-color: rgba(13, 110, 253, 0.3);
-        color: #0d6efd;
+        border-color: rgba(34, 211, 238, 0.35);
+        color: #22d3ee;
       }
 
       @media (max-width: 720px) {
@@ -225,13 +226,13 @@
     </style>
 
     <section class="home-hero">
-      <h2>Design. Mock. Validate.</h2>
+      <h2>Turn any API into an MCP-native tool.</h2>
       <p>
-        Brillar API Tool streamlines how you experiment with mock endpoints and Model Context Protocol (MCP)
-        servers. Jump back into your existing routes, wire up MCP integrations, or craft a brand new response in moments.
+        MindBridge X lets you prototype endpoints, wrap them with Model Context Protocol tooling, and share them with clients or
+        teammates from a single control center. Build, test, and publish bridges without leaving the dashboard.
       </p>
       <div class="hero-actions">
-        <a class="button" href="/admin/new${keyQuery}">Create endpoint</a>
+        <a class="button" href="/admin/new${keyQuery}">Create MCP endpoint</a>
         <a class="secondary" href="/admin${keyQuery}">Browse routes</a>
       </div>
     </section>
@@ -240,12 +241,12 @@
       <article class="stat-card">
         <h3>Total Routes</h3>
         <strong>${stats?.endpoints ?? 0}</strong>
-        <p class="home-card__description">Mock responses ready to test and share.</p>
+        <p class="home-card__description">APIs ready to mock, iterate, or export as MCP tools.</p>
       </article>
       <article class="stat-card">
         <h3>MCP Servers</h3>
         <strong>${stats?.mcpServers ?? 0}</strong>
-        <p class="home-card__description">Connected servers powering your tools.</p>
+        <p class="home-card__description">Connected hubs serving your generated tools to assistants.</p>
       </article>
     </section>
 
@@ -255,7 +256,7 @@
           <div class="home-card__icon" aria-hidden="true">🗺️</div>
           <h3 class="home-card__heading">Routes overview</h3>
           <p class="home-card__description">
-            Review recently configured mock endpoints and understand what your team can hit right away.
+            Review recently configured endpoints and choose which ones to expose as MCP tools instantly.
           </p>
           <ul aria-label="Featured routes">
             ${endpointCards || '<li class="muted">No routes yet. Create your first endpoint to see it here.</li>'}
@@ -269,7 +270,7 @@
           <div class="home-card__icon" aria-hidden="true">🌐</div>
           <h3 class="home-card__heading">MCP servers</h3>
           <p class="home-card__description">
-            Keep an eye on MCP connections and jump in to configure new tools or troubleshoot quickly.
+            Keep an eye on MCP connections, create new tools, and troubleshoot everything in one place.
           </p>
           <ul aria-label="Featured MCP servers">
             ${mcpCards || '<li class="muted">No MCP servers connected yet. Add one to get started.</li>'}
@@ -283,7 +284,7 @@
           <div class="home-card__icon" aria-hidden="true">⚡</div>
           <h3 class="home-card__heading">Create an endpoint</h3>
           <p class="home-card__description">
-            Define a new route in minutes—set the method, path, headers, and response payload with powerful templating.
+            Define a new route in minutes—set the method, path, headers, and response payload, then bridge it into MCP.
           </p>
           <ul aria-label="Steps to create an endpoint">
             <li>

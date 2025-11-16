@@ -167,7 +167,7 @@ export function createMcpRouter() {
             result: {
               protocolVersion,
               serverInfo: {
-                name: serverConfig?.name || 'Brillar Mock API MCP',
+                name: serverConfig?.name || 'MindBridge X MCP',
                 version: serverConfig?.version || '0.1.0'
               },
               capabilities: {

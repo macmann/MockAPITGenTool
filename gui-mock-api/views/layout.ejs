@@ -2,18 +2,18 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title><%= title || 'GUI Mock API' %></title>
+    <title><%= title || 'MindBridge X' %></title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
     <style>
       :root {
-        --brand-primary: #0d6efd;
-        --brand-secondary: #6610f2;
-        --surface-color: #ffffff;
-        --surface-border: rgba(13, 110, 253, 0.12);
-        --surface-shadow: 0 1.5rem 3.5rem rgba(13, 110, 253, 0.08);
-        --muted-color: #4c566a;
-        --muted-border-color: rgba(13, 110, 253, 0.12);
-        --danger-color: #b02a37;
+        --brand-primary: #22d3ee;
+        --brand-secondary: #c084fc;
+        --surface-color: #0b1020;
+        --surface-border: rgba(34, 211, 238, 0.18);
+        --surface-shadow: 0 1.5rem 3.5rem rgba(12, 18, 42, 0.45);
+        --muted-color: #c3c7d3;
+        --muted-border-color: rgba(34, 211, 238, 0.18);
+        --danger-color: #ff6b6b;
       }
 
       html {
@@ -21,8 +21,10 @@
       }
 
       body {
-        background: linear-gradient(180deg, #f4f7ff 0%, #eef2ff 35%, #ffffff 100%);
-        color: #0d1b2a;
+        background: radial-gradient(circle at 12% 20%, rgba(34, 211, 238, 0.1), transparent 35%),
+          radial-gradient(circle at 85% 10%, rgba(192, 132, 252, 0.12), transparent 40%),
+          linear-gradient(180deg, #0b1020 0%, #0f162b 45%, #0b1020 100%);
+        color: #e9ecf5;
       }
 
       a {
@@ -46,10 +48,10 @@
       }
 
       .card {
-        background: #fff;
+        background: #0f162b;
         border-radius: 12px;
         padding: 1.25rem 1.5rem;
-        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+        box-shadow: 0 8px 24px rgba(8, 12, 26, 0.5);
         margin-bottom: 1rem;
       }
 
@@ -97,10 +99,10 @@
       }
 
       .top-bar {
-        background: linear-gradient(120deg, rgba(13, 110, 253, 0.95), rgba(102, 16, 242, 0.9));
-        color: #fff;
-        padding: 0.75rem 0;
-        box-shadow: 0 0.75rem 2.5rem rgba(13, 110, 253, 0.25);
+        background: linear-gradient(120deg, rgba(34, 211, 238, 0.85), rgba(192, 132, 252, 0.85));
+        color: #0b1020;
+        padding: 0.85rem 0;
+        box-shadow: 0 0.75rem 2.5rem rgba(34, 211, 238, 0.35);
       }
 
       .top-bar__content {
@@ -114,21 +116,24 @@
         display: flex;
         align-items: center;
         gap: 0.75rem;
-        font-weight: 600;
-        font-size: 1.1rem;
+        font-weight: 700;
+        font-size: 1.25rem;
+        color: #0b1020;
       }
 
       .top-bar__brand img {
-        height: 48px;
-        width: 48px;
+        height: 52px;
+        width: 52px;
         object-fit: contain;
-        border-radius: 12px;
-        box-shadow: 0 0.75rem 1.5rem rgba(255, 255, 255, 0.25);
+        border-radius: 14px;
+        box-shadow: 0 0.75rem 1.5rem rgba(11, 16, 32, 0.25);
       }
 
       .top-bar__banner {
         font-size: 0.95rem;
-        opacity: 0.95;
+        color: #0b1020;
+        font-weight: 600;
+        letter-spacing: 0.01em;
       }
 
       header.site-header {
@@ -148,7 +153,7 @@
       header.site-header h1 {
         margin: 0;
         font-size: clamp(1.9rem, 3vw, 2.3rem);
-        color: #0d1b2a;
+        color: #e9ecf5;
       }
 
       header.site-header nav {
@@ -165,7 +170,7 @@
       }
 
       header.site-header nav a {
-        color: #0d1b2a;
+        color: #e9ecf5;
         font-weight: 600;
         padding: 0.35rem 0.75rem;
         border-radius: 999px;
@@ -173,20 +178,20 @@
       }
 
       header.site-header nav a:hover {
-        background: rgba(13, 110, 253, 0.12);
+        background: rgba(34, 211, 238, 0.12);
       }
 
       header.site-header nav ul li:last-child a {
-        background: rgba(13, 110, 253, 0.12);
-        color: var(--brand-primary);
+        background: rgba(34, 211, 238, 0.12);
+        color: #22d3ee;
       }
 
       .page-hero {
         position: relative;
         overflow: hidden;
-        background: radial-gradient(circle at top left, rgba(13, 110, 253, 0.18), transparent 60%),
-          radial-gradient(circle at bottom right, rgba(102, 16, 242, 0.15), transparent 55%),
-          #ffffff;
+        background: radial-gradient(circle at top left, rgba(34, 211, 238, 0.12), transparent 60%),
+          radial-gradient(circle at bottom right, rgba(192, 132, 252, 0.12), transparent 55%),
+          linear-gradient(135deg, rgba(11, 16, 32, 0.9), rgba(15, 22, 43, 0.95));
         border-radius: 1.75rem;
         padding: 2.5rem clamp(1.5rem, 4vw, 2.75rem);
         box-shadow: var(--surface-shadow);
@@ -250,7 +255,7 @@
       .section-heading h3 {
         margin: 0;
         font-size: 1.35rem;
-        color: #0d1b2a;
+        color: #e9ecf5;
       }
 
       .status-pill {
@@ -316,8 +321,8 @@
       }
 
       .table-card thead th {
-        background: rgba(13, 110, 253, 0.08);
-        color: #0d1b2a;
+        background: rgba(192, 132, 252, 0.14);
+        color: #e9ecf5;
         font-size: 0.85rem;
         letter-spacing: 0.05em;
         text-transform: uppercase;
@@ -327,7 +332,7 @@
       .table-card td {
         padding: 0.85rem 1.25rem;
         text-align: left;
-        border-bottom: 1px solid rgba(13, 110, 253, 0.08);
+        border-bottom: 1px solid rgba(34, 211, 238, 0.18);
       }
 
       .table-card tbody tr:last-child th,
@@ -336,7 +341,7 @@
       }
 
       .table-card tbody tr:hover {
-        background: rgba(13, 110, 253, 0.04);
+        background: rgba(34, 211, 238, 0.04);
       }
 
       .table-card .empty-state {
@@ -513,7 +518,7 @@
         border: 1px solid rgba(13, 110, 253, 0.25);
         background: rgba(255, 255, 255, 0.96);
         padding: 0.65rem 0.85rem;
-        box-shadow: inset 0 0.5rem 1.2rem rgba(13, 110, 253, 0.05);
+        box-shadow: inset 0 0.5rem 1.2rem rgba(34, 211, 238, 0.08);
       }
 
       textarea {
@@ -525,12 +530,12 @@
       }
 
       pre {
-        background: #0d1b2a;
+        background: #0b1020;
         color: #f8f9ff;
         border-radius: 1.25rem;
         padding: 1.5rem;
         overflow-x: auto;
-        box-shadow: 0 1.75rem 3.25rem rgba(13, 110, 253, 0.18);
+        box-shadow: 0 1.75rem 3.25rem rgba(34, 211, 238, 0.28);
       }
 
       pre code {
@@ -540,8 +545,8 @@
       }
 
       code {
-        background: rgba(13, 110, 253, 0.08);
-        color: #0d1b2a;
+        background: rgba(34, 211, 238, 0.12);
+        color: #e9ecf5;
         padding: 0.25rem 0.55rem;
         border-radius: 0.75rem;
         font-size: 0.85rem;
@@ -553,7 +558,7 @@
         padding: 0.85rem 1.25rem;
         margin: 0;
         font-weight: 600;
-        box-shadow: 0 0.75rem 2rem rgba(13, 110, 253, 0.1);
+        box-shadow: 0 0.75rem 2rem rgba(34, 211, 238, 0.12);
       }
 
       .flash + .flash {
@@ -561,18 +566,18 @@
       }
 
       .flash-success {
-        background: rgba(25, 135, 84, 0.15);
-        color: #0f5132;
+        background: rgba(16, 185, 129, 0.14);
+        color: #9ef8d7;
       }
 
       .flash-error {
-        background: rgba(220, 53, 69, 0.15);
-        color: #842029;
+        background: rgba(255, 107, 107, 0.18);
+        color: #ffc7c7;
       }
 
       .flash-info {
-        background: rgba(13, 202, 240, 0.18);
-        color: #055160;
+        background: rgba(34, 211, 238, 0.18);
+        color: #c9f7ff;
       }
 
       .toast-container {
@@ -590,16 +595,16 @@
         padding: 0.85rem 1.1rem;
         margin: 0;
         font-weight: 600;
-        box-shadow: 0 0.75rem 2rem rgba(13, 110, 253, 0.1);
-        background: rgba(13, 110, 253, 0.14);
-        color: #0d1b2a;
+        box-shadow: 0 0.75rem 2rem rgba(34, 211, 238, 0.15);
+        background: rgba(34, 211, 238, 0.18);
+        color: #0b1020;
         border: 1px solid var(--surface-border);
         animation: fade-in 150ms ease;
       }
 
       .toast-error {
-        background: rgba(220, 53, 69, 0.15);
-        color: #842029;
+        background: rgba(255, 107, 107, 0.2);
+        color: #0b1020;
       }
 
       @keyframes fade-in {
@@ -856,15 +861,15 @@
     <div class="top-bar">
       <div class="container top-bar__content">
         <div class="top-bar__brand">
-          <img src="/public/logo.svg" alt="Brillar API Tool logo" />
-          <span>Brillar API Tool</span>
+          <img src="/public/logo.svg" alt="MindBridge X logo" />
+          <span>MindBridge X</span>
         </div>
-        <div class="top-bar__banner">Design, mock, and test your API endpoints faster.</div>
+        <div class="top-bar__banner">Bridge any API into MCP tools with a single dashboard.</div>
       </div>
     </div>
     <header class="site-header">
       <div class="container">
-        <h1><%= title || 'GUI Mock API' %></h1>
+        <h1><%= title || 'MindBridge X' %></h1>
         <nav>
           <ul>
             <li><a href="/">Home</a></li>
