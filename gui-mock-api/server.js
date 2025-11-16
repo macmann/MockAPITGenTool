@@ -364,6 +364,8 @@ function isTruthyInput(value) {
 }
 
 function buildMcpToolsRenderData(req, mcpServer, key, extras = {}) {
+  const { openapiPreview = null, rawOpenapiSpec = '', error = '' } = extras;
+
   const baseUrl = deriveBaseUrl(req, mcpServer);
   const existingApis = listExistingApiDefinitions().map((api) => ({
     ...api,
@@ -380,7 +382,10 @@ function buildMcpToolsRenderData(req, mcpServer, key, extras = {}) {
     key,
     mcpPath,
     mcpUrl,
-    ...extras
+    ...extras,
+    openapiPreview,
+    rawOpenapiSpec,
+    error
   };
 }
 
