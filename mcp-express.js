@@ -1,5 +1,10 @@
 import express from 'express';
-import { listMcpToolsByServerId, getMcpToolByName } from './gui-mock-api/db.js';
+import {
+  listMcpToolsByServerId,
+  getMcpToolByName,
+  getMcpAuthConfigByServerId
+} from './gui-mock-api/db.js';
+import { executeMcpHttpTool } from './mcp-http-client.js';
 
 const DEFAULT_PROTOCOL_VERSION = '2025-06-18';
 
@@ -263,36 +268,69 @@ export function createMcpRouter() {
             };
             return sendJson(res, 404, errorResponse);
           }
+          const authConfig = await getMcpAuthConfigByServerId(serverId);
 
           console.log('[MCP] tools/call start', {
+            time: new Date().toISOString(),
             serverId,
             toolName,
             argsPreview: JSON.stringify(args).slice(0, 200)
           });
 
-          const stubResult = {
-            content: [
-              {
+          try {
+            const result = await executeMcpHttpTool({ tool, authConfig, args });
+
+            const content = [];
+            if (result.json !== null) {
+              content.push({
+                type: 'json',
+                data: result.json
+              });
+            } else {
+              content.push({
                 type: 'text',
-                text: `Stub call for tool "${toolName}". HTTP method: ${tool.http_method}, path: ${
-                  tool.path_template
-                }`
+                text: result.rawBody || ''
+              });
+            }
+
+            content.push({
+              type: 'text',
+              text: `HTTP ${result.status}`
+            });
+
+            const response = {
+              jsonrpc: '2.0',
+              id: responseId,
+              result: { content }
+            };
+
+            console.log('[MCP] tools/call success', {
+              time: new Date().toISOString(),
+              serverId,
+              toolName,
+              status: result.status
+            });
+
+            return sendJson(res, 200, response);
+          } catch (err) {
+            console.error('[MCP] tools/call error', {
+              time: new Date().toISOString(),
+              serverId,
+              toolName,
+              error: err?.message
+            });
+
+            const errorResponse = {
+              jsonrpc: '2.0',
+              id: responseId,
+              error: {
+                code: -32603,
+                message: 'Failed to execute HTTP tool',
+                data: { message: err.message }
               }
-            ]
-          };
-
-          const response = {
-            jsonrpc: '2.0',
-            id: responseId,
-            result: stubResult
-          };
-
-          console.log('[MCP] tools/call stub response', {
-            serverId,
-            toolName
-          });
-
-          return sendJson(res, 200, response);
+            };
+            return sendJson(res, 500, errorResponse);
+          }
         }
         default: {
           const response = {
