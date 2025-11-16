@@ -627,6 +627,14 @@ export function getMcpTool(id) {
   return normalizeMcpTool(row);
 }
 
+export function getMcpToolByName(mcpServerId, name) {
+  if (!mcpServerId || !name) return null;
+  const row = db
+    .prepare('SELECT * FROM mcp_tools WHERE mcp_server_id = ? AND name = ? LIMIT 1')
+    .get(mcpServerId, name);
+  return normalizeMcpTool(row);
+}
+
 export function listMcpToolsByServerId(mcpServerId, options = {}) {
   if (!mcpServerId) return [];
   const { includeDisabled = false } = options;
@@ -989,6 +997,7 @@ export default {
   listMcpToolsByServerId,
   listMcpTools,
   getMcpTool,
+  getMcpToolByName,
   updateMcpTool,
   upsertMcpTool,
   deleteMcpTool,

@@ -1,13 +1,7 @@
 import express from 'express';
-import { listMcpToolsWithEndpoints } from './gui-mock-api/db.js';
+import { listMcpToolsByServerId, getMcpToolByName } from './gui-mock-api/db.js';
 
 const DEFAULT_PROTOCOL_VERSION = '2025-06-18';
-const DEFAULT_INPUT_SCHEMA = {
-  type: 'object',
-  properties: {},
-  required: [],
-  additionalProperties: true
-};
 
 function truncateHeaders(headers) {
   const out = {};
@@ -35,53 +29,6 @@ function previewPayload(x) {
   }
   if (s.length > 300) s = s.slice(0, 300) + '...[truncated]';
   return s;
-}
-
-function parseToolInputSchema(rawSchema) {
-  if (!rawSchema || typeof rawSchema !== 'string') {
-    return { ...DEFAULT_INPUT_SCHEMA };
-  }
-
-  try {
-    const parsed = JSON.parse(rawSchema);
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      return { ...DEFAULT_INPUT_SCHEMA };
-    }
-
-    const normalized = { ...DEFAULT_INPUT_SCHEMA, ...parsed };
-
-    if (
-      parsed.properties &&
-      typeof parsed.properties === 'object' &&
-      !Array.isArray(parsed.properties)
-    ) {
-      normalized.properties = parsed.properties;
-    }
-
-    if (Array.isArray(parsed.required)) {
-      normalized.required = parsed.required;
-    }
-
-    if (normalized.additionalProperties === undefined) {
-      normalized.additionalProperties = true;
-    }
-
-    return normalized;
-  } catch (err) {
-    console.warn('[MCP] Failed to parse tool schema', err);
-    return { ...DEFAULT_INPUT_SCHEMA };
-  }
-}
-
-function buildToolsList(serverId) {
-  if (!serverId) return [];
-  const toolRecords = listMcpToolsWithEndpoints(serverId) || [];
-  return toolRecords.map((tool) => ({
-    name: tool.name,
-    description:
-      tool.description || `Proxy for ${(tool.method || 'GET').toUpperCase()} ${tool.path || '/'}`,
-    inputSchema: parseToolInputSchema(tool.arg_schema)
-  }));
 }
 
 function sendJson(res, status, payload) {
@@ -221,7 +168,7 @@ export function createMcpRouter() {
               capabilities: {
                 tools: {
                   list: true,
-                  call: false
+                  call: true
                 }
               }
             }
@@ -229,35 +176,122 @@ export function createMcpRouter() {
           return sendJson(res, 200, response);
         }
         case 'tools/list': {
-          const tools = buildToolsList(serverId);
-          const resultTools =
-            tools.length > 0
-              ? tools
-              : [
-                  {
-                    name: 'example.echo',
-                    description:
-                      'Example tool that echoes the provided message back to the caller.',
-                    inputSchema: {
-                      type: 'object',
-                      properties: {
-                        message: {
-                          type: 'string',
-                          description: 'Text to echo back in the response.'
-                        }
-                      },
-                      required: ['message'],
-                      additionalProperties: false
-                    }
-                  }
-                ];
+          const mcpServer = req.mcpServer || null;
+          const serverId = mcpServer?.id;
+
+          if (!serverId) {
+            const errorResponse = {
+              jsonrpc: '2.0',
+              id: responseId,
+              error: {
+                code: -32001,
+                message: 'MCP server context is missing'
+              }
+            };
+            console.log('[MCP] tools/list without mcpServer', { rpcId: responseId });
+            return sendJson(res, 500, errorResponse);
+          }
+
+          const dbTools = await listMcpToolsByServerId(serverId);
+
+          const tools = dbTools.map((t) => ({
+            name: t.name,
+            description: t.description || '',
+            inputSchema: t.input_schema_json
+              ? JSON.parse(t.input_schema_json)
+              : { type: 'object', additionalProperties: true }
+          }));
+
           const response = {
             jsonrpc: '2.0',
             id: responseId,
             result: {
-              tools: resultTools
+              tools
             }
           };
+
+          console.log('[MCP] tools/list result', {
+            time: new Date().toISOString(),
+            serverId,
+            toolCount: tools.length
+          });
+
+          return sendJson(res, 200, response);
+        }
+        case 'tools/call': {
+          const mcpServer = req.mcpServer || null;
+          const serverId = mcpServer?.id;
+
+          if (!serverId) {
+            const errorResponse = {
+              jsonrpc: '2.0',
+              id: responseId,
+              error: {
+                code: -32001,
+                message: 'MCP server context is missing'
+              }
+            };
+            console.log('[MCP] tools/call without mcpServer', { rpcId: responseId });
+            return sendJson(res, 500, errorResponse);
+          }
+
+          const callParams = params || {};
+          const toolName = callParams.name;
+          const args = callParams.arguments || {};
+
+          if (!toolName || typeof toolName !== 'string') {
+            const errorResponse = {
+              jsonrpc: '2.0',
+              id: responseId,
+              error: {
+                code: -32602,
+                message: 'Invalid params: "name" is required and must be a string'
+              }
+            };
+            return sendJson(res, 400, errorResponse);
+          }
+
+          const tool = await getMcpToolByName(serverId, toolName);
+          if (!tool || tool.enabled === false) {
+            const errorResponse = {
+              jsonrpc: '2.0',
+              id: responseId,
+              error: {
+                code: -32002,
+                message: `Tool not found or disabled: ${toolName}`
+              }
+            };
+            return sendJson(res, 404, errorResponse);
+          }
+
+          console.log('[MCP] tools/call start', {
+            serverId,
+            toolName,
+            argsPreview: JSON.stringify(args).slice(0, 200)
+          });
+
+          const stubResult = {
+            content: [
+              {
+                type: 'text',
+                text: `Stub call for tool "${toolName}". HTTP method: ${tool.http_method}, path: ${
+                  tool.path_template
+                }`
+              }
+            ]
+          };
+
+          const response = {
+            jsonrpc: '2.0',
+            id: responseId,
+            result: stubResult
+          };
+
+          console.log('[MCP] tools/call stub response', {
+            serverId,
+            toolName
+          });
+
           return sendJson(res, 200, response);
         }
         default: {
