@@ -329,7 +329,8 @@ function normalizeMcpServer(row) {
 }
 
 const DEFAULT_JSON_TEXT = '{}';
-const VALID_HTTP_METHODS = new Set(['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS']);
+const VALID_HTTP_METHODS = new Set(['GET', 'POST', 'PUT', 'DELETE', 'PATCH']);
+const MCP_TOOL_NAME_PATTERN = /^[A-Za-z0-9_-]+$/;
 const VALID_AUTH_TYPES = new Set(['none', 'api_key_header', 'bearer_token', 'basic']);
 
 function coerceOptionalString(value, fallback = '') {
@@ -337,6 +338,35 @@ function coerceOptionalString(value, fallback = '') {
     return fallback;
   }
   return String(value);
+}
+
+function normalizeHttpMethod(method) {
+  const upper = String(method || '')
+    .trim()
+    .toUpperCase();
+
+  if (VALID_HTTP_METHODS.has(upper)) {
+    return upper;
+  }
+
+  return 'GET';
+}
+
+function assertValidMcpHttpMethod(method) {
+  const normalized = normalizeHttpMethod(method);
+  if (!VALID_HTTP_METHODS.has(normalized)) {
+    throw new Error('HTTP method must be one of GET, POST, PUT, DELETE, or PATCH.');
+  }
+  return normalized;
+}
+
+function validateOptionalBaseUrl(value) {
+  const text = coerceOptionalString(value).trim();
+  if (!text) return '';
+  if (!/^https?:\/\//i.test(text)) {
+    throw new Error('Base URL must start with http:// or https://');
+  }
+  return text;
 }
 
 function coerceJsonText(value, fallback = DEFAULT_JSON_TEXT) {
@@ -357,17 +387,6 @@ function coerceJsonText(value, fallback = DEFAULT_JSON_TEXT) {
   }
 }
 
-function coerceHttpMethod(method) {
-  if (!method) {
-    return 'GET';
-  }
-  const upper = String(method).trim().toUpperCase();
-  if (VALID_HTTP_METHODS.has(upper)) {
-    return upper;
-  }
-  return upper || 'GET';
-}
-
 function coerceAuthType(value) {
   if (!value || typeof value !== 'string') {
     return 'none';
@@ -380,7 +399,7 @@ function normalizeMcpTool(row) {
   if (!row) return null;
   return {
     ...row,
-    http_method: coerceHttpMethod(row.http_method),
+    http_method: normalizeHttpMethod(row.http_method),
     input_schema_json: row.input_schema_json ? String(row.input_schema_json) : DEFAULT_JSON_TEXT,
     query_mapping_json: row.query_mapping_json ? String(row.query_mapping_json) : DEFAULT_JSON_TEXT,
     body_mapping_json: row.body_mapping_json ? String(row.body_mapping_json) : DEFAULT_JSON_TEXT,
@@ -543,7 +562,7 @@ export function upsertMcpServer(row) {
     id: recordId,
     name: row.name || '',
     description: row.description || '',
-    base_url: row.base_url || '',
+    base_url: validateOptionalBaseUrl(row.base_url || ''),
     api_key_header: row.api_key_header || '',
     api_key_value: row.api_key_value || '',
     is_enabled: row.is_enabled ? 1 : 0
@@ -661,6 +680,12 @@ export function createMcpTool(toolData) {
   if (!name) {
     throw new Error('Tool name is required');
   }
+  if (/\s/.test(name)) {
+    throw new Error('Tool name cannot include spaces. Use dashes or underscores.');
+  }
+  if (!MCP_TOOL_NAME_PATTERN.test(name)) {
+    throw new Error('Tool name may only include letters, numbers, hyphens, or underscores.');
+  }
 
   const conflict = db
     .prepare('SELECT id FROM mcp_tools WHERE mcp_server_id = ? AND name = ? LIMIT 1')
@@ -672,6 +697,8 @@ export function createMcpTool(toolData) {
   const now = new Date().toISOString();
   let httpMethod = payload.http_method ?? payload.method ?? 'GET';
   let pathTemplate = payload.path_template ?? payload.path ?? '';
+  const baseUrlInput =
+    payload.base_url !== undefined ? payload.base_url : serverRecord.base_url || '';
 
   if (payload.endpoint_id) {
     const endpoint = getEndpoint(payload.endpoint_id);
@@ -682,6 +709,9 @@ export function createMcpTool(toolData) {
     pathTemplate = endpoint.path;
   }
 
+  const resolvedHttpMethod = assertValidMcpHttpMethod(httpMethod);
+  const resolvedBaseUrl = validateOptionalBaseUrl(baseUrlInput);
+
   const record = {
     id: payload.id && String(payload.id).trim() ? String(payload.id).trim() : nanoid(12),
     mcp_server_id: serverRecord.id,
@@ -691,8 +721,8 @@ export function createMcpTool(toolData) {
       payload.input_schema_json ?? payload.arg_schema ?? DEFAULT_JSON_TEXT,
       DEFAULT_JSON_TEXT
     ),
-    http_method: coerceHttpMethod(httpMethod),
-    base_url: coerceOptionalString(payload.base_url, serverRecord.base_url || ''),
+    http_method: resolvedHttpMethod,
+    base_url: resolvedBaseUrl,
     path_template: coerceOptionalString(pathTemplate),
     query_mapping_json: coerceJsonText(payload.query_mapping_json, DEFAULT_JSON_TEXT),
     body_mapping_json: coerceJsonText(payload.body_mapping_json, DEFAULT_JSON_TEXT),
@@ -733,6 +763,12 @@ export function updateMcpTool(id, updates = {}) {
     if (!updatedName) {
       throw new Error('Tool name cannot be empty');
     }
+    if (/\s/.test(updatedName)) {
+      throw new Error('Tool name cannot include spaces. Use dashes or underscores.');
+    }
+    if (!MCP_TOOL_NAME_PATTERN.test(updatedName)) {
+      throw new Error('Tool name may only include letters, numbers, hyphens, or underscores.');
+    }
     const conflict = db
       .prepare('SELECT id FROM mcp_tools WHERE mcp_server_id = ? AND name = ? AND id != ? LIMIT 1')
       .get(existing.mcp_server_id, updatedName, id);
@@ -754,11 +790,11 @@ export function updateMcpTool(id, updates = {}) {
   }
 
   if (updates.http_method !== undefined || updates.method !== undefined) {
-    changes.http_method = coerceHttpMethod(updates.http_method ?? updates.method);
+    changes.http_method = assertValidMcpHttpMethod(updates.http_method ?? updates.method);
   }
 
   if (updates.base_url !== undefined) {
-    changes.base_url = coerceOptionalString(updates.base_url);
+    changes.base_url = validateOptionalBaseUrl(updates.base_url);
   }
 
   if (updates.path_template !== undefined || updates.path !== undefined) {

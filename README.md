@@ -100,6 +100,8 @@ The script prints the generated code to stdout. Override the model by setting `O
 
 Logs capture every MCP request/response, making debugging easier when integrating assistants.
 
+See [docs/mcp-gateway.md](docs/mcp-gateway.md) for curl-based MCP testing steps and gateway configuration reminders.
+
 ## Deployment notes
 
 - The project is optimized for Render or similar Node hosts. Use `npm install` for build and `node server.js` (or `npm start`) for start.

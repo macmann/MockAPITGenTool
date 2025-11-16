@@ -43,7 +43,7 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const ADMIN_KEY = process.env.ADMIN_KEY || process.env.ADMIN_TOKEN || process.env.ADMIN_SECRET || '';
-const SUPPORTED_HTTP_METHODS = new Set(['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS']);
+const SUPPORTED_HTTP_METHODS = new Set(['GET', 'POST', 'PUT', 'DELETE', 'PATCH']);
 
 function truncateHeadersForLog(headers = {}) {
   const out = {};
@@ -1202,6 +1202,7 @@ app.post('/admin/mcp/:id/tools/from-existing', requireAdmin, (req, res) => {
   const apiIdsRaw = req.body.apiIds;
   const apiIds = Array.isArray(apiIdsRaw) ? apiIdsRaw : [apiIdsRaw].filter(Boolean);
 
+  let errorMessage = '';
   for (const apiId of apiIds) {
     const api = getExistingApiById(apiId);
     if (!api) continue;
@@ -1227,7 +1228,16 @@ app.post('/admin/mcp/:id/tools/from-existing', requireAdmin, (req, res) => {
       });
     } catch (err) {
       console.error('Failed to create MCP tool from existing API', { apiId, error: err?.message || err });
+      errorMessage = err?.message || 'Failed to create MCP tool from the selected API.';
+      break;
     }
+  }
+
+  if (errorMessage) {
+    const mcpServer = getMcpServerWithTools(serverId, { includeDisabled: true });
+    if (!mcpServer) return res.status(404).send('MCP server not found');
+    const viewModel = buildMcpToolsRenderData(req, mcpServer, key, { error: errorMessage });
+    return res.status(400).render('admin_mcp_tools', viewModel);
   }
 
   res.redirect(`/admin/mcp/${encodeURIComponent(serverId)}/tools?key=${encodeURIComponent(key)}`);
@@ -1302,6 +1312,7 @@ app.post('/admin/mcp/:id/tools/openapi/save', requireAdmin, (req, res) => {
   const opsInput = req.body.ops || [];
   const opsArray = Array.isArray(opsInput) ? opsInput : Object.values(opsInput);
 
+  let errorMessage = '';
   for (const op of opsArray) {
     if (!op) continue;
     if (!isTruthyInput(op.selected)) continue;
@@ -1405,7 +1416,16 @@ app.post('/admin/mcp/:id/tools/openapi/save', requireAdmin, (req, res) => {
         operationId: op.operationId,
         error: err?.message || err
       });
+      errorMessage = err?.message || 'Failed to save one of the OpenAPI operations as a tool.';
+      break;
     }
+  }
+
+  if (errorMessage) {
+    const mcpServer = getMcpServerWithTools(serverId, { includeDisabled: true });
+    if (!mcpServer) return res.status(404).send('MCP server not found');
+    const viewModel = buildMcpToolsRenderData(req, mcpServer, key, { error: errorMessage });
+    return res.status(400).render('admin_mcp_tools', viewModel);
   }
 
   res.redirect(`/admin/mcp/${encodeURIComponent(serverId)}/tools?key=${encodeURIComponent(key)}`);
@@ -1413,23 +1433,31 @@ app.post('/admin/mcp/:id/tools/openapi/save', requireAdmin, (req, res) => {
 
 // Add / update a single tool
 app.post('/admin/mcp/:id/tools/save', requireAdmin, (req, res) => {
-  const s = getMcpServer(req.params.id);
-  if (!s) return res.status(404).send('MCP server not found');
+  const mcpServer = getMcpServerWithTools(req.params.id, { includeDisabled: true });
+  if (!mcpServer) return res.status(404).send('MCP server not found');
 
   const body = req.body;
   const argSchema = body.arg_schema || '{"type":"object","properties":{},"required":[]}';
+  const adminKey = getAdminKeyValue(req, res);
 
-  upsertMcpTool({
-    id: body.id || '',
-    mcp_server_id: s.id,
-    endpoint_id: body.endpoint_id,
-    name: body.name,
-    description: body.description || '',
-    arg_schema: argSchema
-  });
+  try {
+    upsertMcpTool({
+      id: body.id || '',
+      mcp_server_id: mcpServer.id,
+      endpoint_id: body.endpoint_id,
+      name: body.name,
+      description: body.description || '',
+      arg_schema: argSchema
+    });
+  } catch (err) {
+    const viewModel = buildMcpToolsRenderData(req, mcpServer, adminKey, {
+      error: err?.message || 'Failed to save MCP tool.'
+    });
+    return res.status(400).render('admin_mcp_tools', viewModel);
+  }
 
   const keyQuery = persistAdminKey(req, res);
-  res.redirect(`/admin/mcp/${encodeURIComponent(s.id)}/tools${keyQuery}`);
+  res.redirect(`/admin/mcp/${encodeURIComponent(mcpServer.id)}/tools${keyQuery}`);
 });
 
 // Delete tool
