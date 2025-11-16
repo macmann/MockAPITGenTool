@@ -1413,9 +1413,14 @@ app.post('/admin/mcp/:serverId/tools/:toolId/edit', requireAdmin, async (req, re
 
 app.post('/admin/mcp/:id/tools/from-existing', requireAdmin, (req, res) => {
   const serverId = req.params.id;
-  const key = req.body.key || '';
+  const mcpServer = getMcpServer(serverId);
+  if (!mcpServer) return res.status(404).send('MCP server not found');
+
+  const key = getAdminKeyValue(req, res);
   const apiIdsRaw = req.body.apiIds;
   const apiIds = Array.isArray(apiIdsRaw) ? apiIdsRaw : [apiIdsRaw].filter(Boolean);
+
+  const fallbackBaseUrl = deriveBaseUrl(req, mcpServer);
 
   let errorMessage = '';
   for (const apiId of apiIds) {
@@ -1423,6 +1428,7 @@ app.post('/admin/mcp/:id/tools/from-existing', requireAdmin, (req, res) => {
     if (!api) continue;
 
     const toolName = deriveToolNameFromApi(api);
+    const baseUrl = api.baseUrl || fallbackBaseUrl || '';
     try {
       createMcpTool({
         mcp_server_id: serverId,
@@ -1434,7 +1440,7 @@ app.post('/admin/mcp/:id/tools/from-existing', requireAdmin, (req, res) => {
           additionalProperties: true
         }),
         http_method: api.method,
-        base_url: api.baseUrl || '',
+        base_url: baseUrl,
         path_template: api.path,
         query_mapping_json: JSON.stringify({}),
         body_mapping_json: JSON.stringify({}),
