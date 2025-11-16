@@ -16,20 +16,24 @@ MindBridge X provides a visual dashboard for crafting endpoints, a JSON-RPC brid
 
 ## Quickstart
 
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
-2. Copy environment defaults and edit as needed:
+1. Copy the environment template and adjust values as needed:
    ```bash
    cp .env.example .env
    ```
-   Key variables: `OPENAI_API_KEY`, `ADMIN_KEY`, `PORT` (default `3000`), `DB_FILE` (default `mockapis.db`), `OPENAI_MODEL` (defaults to `gpt-4o-mini`), `MCP_DEFAULT_SLUG`, `MCP_PUBLIC_URL`, `MOCK_BASE_URL`.
-3. Start the server:
+   For local development, the defaults use SQLite (`DATABASE_URL="file:./prisma/dev.db"`) and a credentials-based NextAuth setup.
+2. Install dependencies:
    ```bash
-   npm start
+   npm install
    ```
-4. Visit `http://localhost:3000/admin`, enter your `ADMIN_KEY`, and begin adding endpoints.
+3. Apply the initial Prisma migrations (creates the SQLite dev database):
+   ```bash
+   npx prisma migrate dev
+   ```
+4. Start the Next.js app:
+   ```bash
+   npm run dev
+   ```
+5. Visit `http://localhost:3000/login` and sign in with the default admin credentials (`admin@example.com` / `password`) to begin creating projects and MCP mappings.
 
 ## Example Usage
 
@@ -51,6 +55,53 @@ API-MCPGenTool/
 ├─ package.json           # Root package scripts & dependencies
 └─ README.md
 ```
+
+## Database Setup
+
+- **Local development**: Uses SQLite by default. Copy `.env.example` to `.env` and keep `DATABASE_URL="file:./prisma/dev.db"`. Run `npx prisma migrate dev` to create the schema and generate the Prisma Client locally.
+- **Production**: Provision a managed Postgres database (Neon, Supabase, Render, Railway, etc.), set `DATABASE_URL` to the provided connection string, and run `npm run db:migrate:deploy` (or `npx prisma migrate deploy`) during deployment so the schema stays up to date.
+
+## Deployment
+
+### Deployment → Vercel
+
+1. Import the GitHub repository into Vercel and select the default project settings.
+2. Configure environment variables in the Vercel dashboard:
+   - `DATABASE_URL` (Postgres connection string)
+   - `NEXTAUTH_URL` (your Vercel site URL)
+   - `NEXTAUTH_SECRET` (strong random value)
+   - `GITHUB_ID`, `GITHUB_SECRET` (optional GitHub OAuth)
+   - Any other app secrets you use (`OPENAI_API_KEY`, `ADMIN_KEY`, `MCP_PUBLIC_URL`, etc.).
+3. Build command: `npm run build` (runs `prisma generate && next build`).
+4. Start command: `npm run start`.
+5. Run database migrations for the first deploy using `npm run db:migrate:deploy` as a post-deploy or manual job against the production `DATABASE_URL`.
+6. Order of operations for the first launch: set environment variables → trigger a build → run migrations → open the app and sign in.
+
+### Deployment → Generic Node Host (Render/Railway/etc.)
+
+- **Runtime**: Use Node.js ≥ 18 (per `package.json` engines).
+- **Environment**: Set the same variables as above (`DATABASE_URL`, `NEXTAUTH_URL`, `NEXTAUTH_SECRET`, provider keys, `OPENAI_API_KEY`, etc.).
+- **Build**: `npm run build`.
+- **Start**: `npm run start`.
+- **Migrations**: On first deploy (or after schema changes), run `npm run db:migrate:deploy` with the production `DATABASE_URL` before starting the app.
+
+### Health check
+
+- Endpoint: `GET /api/health`
+- Response: `{ "status": "ok", "database": "ok" | "unavailable" }`
+- Use this for uptime checks on Render, Railway, or other orchestrators.
+
+### Deployment Checklist
+
+- Copy `.env.example` to `.env` and fill in values.
+- Local dev: ensure `DATABASE_URL=file:./prisma/dev.db`.
+- Run `npx prisma migrate dev`.
+- Run `npm run dev`.
+- Production:
+  - Provision Postgres and set `DATABASE_URL`.
+  - Set `NEXTAUTH_URL`, `NEXTAUTH_SECRET`, and any provider keys (e.g., GitHub OAuth).
+  - Run `npx prisma migrate deploy` (or `npm run db:migrate:deploy`).
+  - Run `npm run build` and `npm run start`.
 
 ## Screenshots
 
