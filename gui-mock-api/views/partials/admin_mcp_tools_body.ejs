@@ -137,6 +137,7 @@
           <% const previewBaseUrl = typeof openapiBaseUrl !== 'undefined' ? openapiBaseUrl : mcpUrl; %>
           <input type="text" name="base_url" value="<%= previewBaseUrl || '' %>" placeholder="https://api.example.com" />
         </label>
+        <textarea name="openapi_spec" hidden><%- rawOpenapiSpec || '' %></textarea>
         <div class="table-card openapi-preview__table-card">
           <table class="openapi-preview__table">
             <thead>
@@ -153,8 +154,16 @@
               <% openapiPreview.forEach((op, index) => { %>
                 <% const isSelected = typeof op.selected === 'boolean' ? op.selected : true; %>
                 <tr>
-                  <td>
-                    <input type="checkbox" name="ops[<%= index %>][selected]" value="true" <%= isSelected ? 'checked' : '' %> />
+                  <td style="text-align: center;">
+                    <label class="checkbox" style="padding: 0; background: transparent; box-shadow: none;">
+                      <input
+                        type="checkbox"
+                        name="ops[<%= index %>][selected]"
+                        value="true"
+                        aria-label="Select <%= op.suggestedName || op.operationId || 'operation' %>"
+                        <%= isSelected ? 'checked' : '' %>
+                      />
+                    </label>
                   </td>
                   <td>
                     <input type="text" name="ops[<%= index %>][tool_name]" value="<%= op.suggestedName || op.operationId %>" />

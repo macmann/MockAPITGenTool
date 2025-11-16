@@ -1578,7 +1578,8 @@ app.post('/admin/mcp/:id/tools/openapi/save', requireAdmin, (req, res) => {
     const viewModel = buildMcpToolsRenderData(req, mcpServer, key, {
       error: 'Select at least one operation to save as an MCP tool.',
       openapiPreview: normalizedOps,
-      openapiBaseUrl: baseUrl
+      openapiBaseUrl: baseUrl,
+      rawOpenapiSpec: req.body.openapi_spec || ''
     });
     return res.status(400).render('admin_mcp_tools', viewModel);
   }
@@ -1681,7 +1682,12 @@ app.post('/admin/mcp/:id/tools/openapi/save', requireAdmin, (req, res) => {
   if (errorMessage) {
     const mcpServer = getMcpServerWithTools(serverId, { includeDisabled: true });
     if (!mcpServer) return res.status(404).send('MCP server not found');
-    const viewModel = buildMcpToolsRenderData(req, mcpServer, key, { error: errorMessage });
+    const viewModel = buildMcpToolsRenderData(req, mcpServer, key, {
+      error: errorMessage,
+      openapiPreview: normalizedOps,
+      openapiBaseUrl: baseUrl,
+      rawOpenapiSpec: req.body.openapi_spec || ''
+    });
     return res.status(400).render('admin_mcp_tools', viewModel);
   }
 
