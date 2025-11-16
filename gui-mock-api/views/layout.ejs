@@ -580,6 +580,44 @@
         color: #055160;
       }
 
+      .toast-container {
+        position: fixed;
+        top: 1.25rem;
+        right: 1.25rem;
+        display: grid;
+        gap: 0.75rem;
+        z-index: 999;
+        max-width: min(360px, 90vw);
+      }
+
+      .toast {
+        border-radius: 0.95rem;
+        padding: 0.85rem 1.1rem;
+        margin: 0;
+        font-weight: 600;
+        box-shadow: 0 0.75rem 2rem rgba(13, 110, 253, 0.1);
+        background: rgba(13, 110, 253, 0.14);
+        color: #0d1b2a;
+        border: 1px solid var(--surface-border);
+        animation: fade-in 150ms ease;
+      }
+
+      .toast-error {
+        background: rgba(220, 53, 69, 0.15);
+        color: #842029;
+      }
+
+      @keyframes fade-in {
+        from {
+          opacity: 0;
+          transform: translateY(-6px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
       button,
       .button,
       a.button {
@@ -842,6 +880,7 @@
         </nav>
       </div>
     </header>
+    <div class="toast-container" data-toast-container aria-live="polite"></div>
     <main class="container">
       <%- body %>
     </main>

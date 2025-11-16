@@ -235,3 +235,47 @@
     });
   });
 })();
+
+(function () {
+  const toastContainer = document.querySelector('[data-toast-container]');
+
+  const showToast = (message, type = 'error') => {
+    if (!toastContainer || !message) return;
+    const toast = document.createElement('div');
+    toast.className = `toast ${type === 'error' ? 'toast-error' : ''}`;
+    toast.textContent = message;
+    toastContainer.appendChild(toast);
+    setTimeout(() => toast.remove(), 4200);
+  };
+
+  const openapiForm = document.querySelector('form.openapi-preview');
+  if (!openapiForm) return;
+
+  const selectionSelector = "input[type='checkbox'][name^='ops'][name$='[selected]']";
+  const selectionTable = openapiForm.querySelector('.openapi-preview__table');
+
+  if (selectionTable) {
+    selectionTable.addEventListener('click', (event) => {
+      const directCheckbox = event.target.closest(selectionSelector);
+      if (directCheckbox) return;
+
+      if (event.target.closest('input, textarea, select, button, label, a')) return;
+
+      const row = event.target.closest('tr');
+      const checkbox = row?.querySelector(selectionSelector);
+      if (checkbox) {
+        checkbox.checked = !checkbox.checked;
+      }
+    });
+  }
+
+  openapiForm.addEventListener('submit', (event) => {
+    const checkboxes = openapiForm.querySelectorAll(selectionSelector);
+    const hasSelection = Array.from(checkboxes).some((cb) => cb.checked);
+    if (!hasSelection) {
+      event.preventDefault();
+      showToast('Select at least one operation to save as an MCP tool.');
+      checkboxes[0]?.focus();
+    }
+  });
+})();

@@ -134,7 +134,8 @@
         <input type="hidden" name="key" value="<%= key %>">
         <label class="stack">
           <span>Base URL (optional)</span>
-          <input type="text" name="base_url" value="<%= mcpUrl || '' %>" placeholder="https://api.example.com" />
+          <% const previewBaseUrl = typeof openapiBaseUrl !== 'undefined' ? openapiBaseUrl : mcpUrl; %>
+          <input type="text" name="base_url" value="<%= previewBaseUrl || '' %>" placeholder="https://api.example.com" />
         </label>
         <div class="table-card openapi-preview__table-card">
           <table class="openapi-preview__table">
@@ -150,9 +151,10 @@
             </thead>
             <tbody>
               <% openapiPreview.forEach((op, index) => { %>
+                <% const isSelected = typeof op.selected === 'boolean' ? op.selected : true; %>
                 <tr>
                   <td>
-                    <input type="checkbox" name="ops[<%= index %>][selected]" value="true" checked />
+                    <input type="checkbox" name="ops[<%= index %>][selected]" value="true" <%= isSelected ? 'checked' : '' %> />
                   </td>
                   <td>
                     <input type="text" name="ops[<%= index %>][tool_name]" value="<%= op.suggestedName || op.operationId %>" />
@@ -169,6 +171,7 @@
                     <input type="hidden" name="ops[<%= index %>][method]" value="<%= op.method %>" />
                     <input type="hidden" name="ops[<%= index %>][path]" value="<%= op.path %>" />
                     <input type="hidden" name="ops[<%= index %>][operationId]" value="<%= op.operationId %>" />
+                    <input type="hidden" name="ops[<%= index %>][summary]" value="<%= op.summary || '' %>" />
                     <input type="hidden" name="ops[<%= index %>][parametersJson]" value="<%= JSON.stringify(op.parameters || []) %>" />
                     <input type="hidden" name="ops[<%= index %>][requestBodyJson]" value="<%= JSON.stringify(op.requestBody || null) %>" />
                   </td>

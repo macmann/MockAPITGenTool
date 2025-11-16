@@ -363,6 +363,43 @@ function isTruthyInput(value) {
   return value === true || value === 'true' || value === 'on' || value === '1';
 }
 
+function safeParseJson(value, fallback) {
+  try {
+    return value ? JSON.parse(value) : fallback;
+  } catch (err) {
+    console.error('Failed to parse JSON payload from form submission', err);
+    return fallback;
+  }
+}
+
+function normalizeOpenapiOperationInput(op, index = 0) {
+  const method = String(op?.method || '').toUpperCase() || 'GET';
+  const path = op?.path || '';
+  const operationId = op?.operationId || `${method}_${path || index}`;
+
+  const parameters = Array.isArray(op?.parameters)
+    ? op.parameters
+    : safeParseJson(op?.parametersJson, []);
+  const requestBody = op?.requestBody || safeParseJson(op?.requestBodyJson, null);
+
+  const toolNameCandidate = op?.tool_name || op?.suggestedName || op?.operationId;
+  const suggestedName = toolNameCandidate
+    ? slugifyToolName(toolNameCandidate)
+    : deriveToolNameFromApi({ name: operationId || `${method}_${path}`, method, path });
+
+  return {
+    selected: isTruthyInput(op?.selected),
+    method,
+    path,
+    operationId,
+    summary: op?.summary || '',
+    description: op?.description || op?.summary || '',
+    parameters,
+    requestBody,
+    suggestedName
+  };
+}
+
 function buildMcpToolsRenderData(req, mcpServer, key, extras = {}) {
   const { openapiPreview = null, rawOpenapiSpec = '', error = '' } = extras;
 
@@ -1511,6 +1548,7 @@ app.post('/admin/mcp/:id/tools/openapi/preview', requireAdmin, (req, res) => {
           method: upperMethod,
           path: pathKey
         }),
+        selected: true,
         raw: opData
       });
     }
@@ -1532,14 +1570,25 @@ app.post('/admin/mcp/:id/tools/openapi/save', requireAdmin, (req, res) => {
 
   const opsInput = req.body.ops || [];
   const opsArray = Array.isArray(opsInput) ? opsInput : Object.values(opsInput);
+  const normalizedOps = opsArray.map((op, index) => normalizeOpenapiOperationInput(op, index));
+
+  if (!normalizedOps.some((op) => op && op.selected)) {
+    const mcpServer = getMcpServerWithTools(serverId, { includeDisabled: true });
+    if (!mcpServer) return res.status(404).send('MCP server not found');
+    const viewModel = buildMcpToolsRenderData(req, mcpServer, key, {
+      error: 'Select at least one operation to save as an MCP tool.',
+      openapiPreview: normalizedOps,
+      openapiBaseUrl: baseUrl
+    });
+    return res.status(400).render('admin_mcp_tools', viewModel);
+  }
 
   let errorMessage = '';
-  for (const op of opsArray) {
-    if (!op) continue;
-    if (!isTruthyInput(op.selected)) continue;
+  for (const op of normalizedOps) {
+    if (!op || !op.selected) continue;
 
-    const name = op.tool_name
-      ? slugifyToolName(op.tool_name)
+    const name = op.suggestedName
+      ? slugifyToolName(op.suggestedName)
       : deriveToolNameFromApi({
           name: op.operationId || `${op.method}_${op.path}`,
           method: op.method,
@@ -1549,21 +1598,8 @@ app.post('/admin/mcp/:id/tools/openapi/save', requireAdmin, (req, res) => {
     const description = op.description || '';
     const method = String(op.method || '').toUpperCase();
     const path = op.path || '';
-
-    let parameters = [];
-    try {
-      const parsed = op.parametersJson ? JSON.parse(op.parametersJson) : [];
-      parameters = Array.isArray(parsed) ? parsed : [];
-    } catch (err) {
-      console.error('Failed to parse OpenAPI parameters JSON', err);
-    }
-
-    let requestBody = null;
-    try {
-      requestBody = op.requestBodyJson ? JSON.parse(op.requestBodyJson) : null;
-    } catch (err) {
-      console.error('Failed to parse OpenAPI requestBody JSON', err);
-    }
+    const parameters = Array.isArray(op.parameters) ? op.parameters : [];
+    const requestBody = op.requestBody || null;
 
     const inputSchema = {
       type: 'object',
