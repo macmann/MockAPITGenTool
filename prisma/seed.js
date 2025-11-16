@@ -1,11 +1,12 @@
 import { PrismaClient } from '@prisma/client'
+import { DEFAULT_PROJECT_NAME, DEMO_USER_EMAIL, DEMO_USER_NAME } from '../lib/demo-constants.js'
 
 const prisma = new PrismaClient()
 
 async function main() {
-  const demoEmail = 'demo@mindbridge.local'
-  const demoName = 'Demo User'
-  const defaultProjectName = 'Default Project'
+  const demoEmail = DEMO_USER_EMAIL
+  const demoName = DEMO_USER_NAME
+  const defaultProjectName = DEFAULT_PROJECT_NAME
 
   const user = await prisma.user.upsert({
     where: { email: demoEmail },

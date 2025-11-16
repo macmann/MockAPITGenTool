@@ -3,4 +3,5 @@ node_modules/
 .DS_Store
 gui-mock-api/data.sqlite*
 mockapis.db*
+dev.db
 .npmrc

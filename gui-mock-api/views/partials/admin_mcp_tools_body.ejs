@@ -151,6 +151,8 @@
         <input type="hidden" name="openapi_auth_type" value="<%= authHint.auth_type || 'none' %>">
         <input type="hidden" name="openapi_api_key_header_name" value="<%= authHint.api_key_header_name || '' %>">
         <input type="hidden" name="openapi_api_key_query_name" value="<%= authHint.api_key_query_name || '' %>">
+        <input type="hidden" name="openapi_spec_id" value="<%= openapiSpecId || '' %>">
+        <textarea name="raw_openapi_spec" hidden><%= rawOpenapiSpec || '' %></textarea>
         <label class="stack">
           <span>Base URL (optional)</span>
           <% const previewBaseUrl = typeof openapiBaseUrl !== 'undefined' ? openapiBaseUrl : mcpUrl; %>

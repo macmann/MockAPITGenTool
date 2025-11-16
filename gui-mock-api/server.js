@@ -9,6 +9,12 @@ import { nanoid } from 'nanoid';
 import YAML from 'yaml';
 
 import { prisma } from '../lib/prisma.js';
+import {
+  detectSpecFormat,
+  persistOpenApiSpecForDemo,
+  replaceToolMappingsForDemo,
+  upsertApiConnectionForDemo
+} from '../lib/openapi-persistence.js';
 import { buildRuntimeRouter } from './router-runtime.js';
 import {
   allEndpoints,
@@ -485,7 +491,8 @@ function buildMcpToolsRenderData(req, mcpServer, key, extras = {}) {
     openapiPreview = null,
     rawOpenapiSpec = '',
     error = '',
-    openapiAuthInference = null
+    openapiAuthInference = null,
+    openapiSpecId = null
   } = extras;
 
   const inferredAuth =
@@ -510,6 +517,7 @@ function buildMcpToolsRenderData(req, mcpServer, key, extras = {}) {
     authConfig: mcpServer.authConfig || null,
     authSummary: summarizeAuthConfig(mcpServer.authConfig),
     ...extras,
+    openapiSpecId,
     openapiPreview,
     rawOpenapiSpec,
     openapiAuthInference: inferredAuth,
@@ -1652,7 +1660,7 @@ app.post('/admin/mcp/:id/tools/from-existing', requireAdmin, (req, res) => {
   res.redirect(`/admin/mcp/${encodeURIComponent(serverId)}/tools?key=${encodeURIComponent(key)}`);
 });
 
-app.post('/admin/mcp/:id/tools/openapi/preview', requireAdmin, (req, res) => {
+app.post('/admin/mcp/:id/tools/openapi/preview', requireAdmin, async (req, res) => {
   const serverId = req.params.id;
   const key = req.body.key || '';
   const rawSpec = req.body.openapi_spec || '';
@@ -1675,6 +1683,16 @@ app.post('/admin/mcp/:id/tools/openapi/preview', requireAdmin, (req, res) => {
   }
 
   const openapiAuthInference = inferOpenapiAuth(parsed);
+
+  let persistedSpec = null;
+  try {
+    persistedSpec = await persistOpenApiSpecForDemo({
+      rawSpec,
+      format: detectSpecFormat(rawSpec)
+    });
+  } catch (err) {
+    console.error('Failed to persist OpenAPI spec for preview', err);
+  }
 
   const operations = [];
   const paths = parsed?.paths || {};
@@ -1712,16 +1730,20 @@ app.post('/admin/mcp/:id/tools/openapi/preview', requireAdmin, (req, res) => {
   const viewModel = buildMcpToolsRenderData(req, mcpServer, key, {
     openapiPreview: operations,
     rawOpenapiSpec: rawSpec,
-    openapiAuthInference
+    openapiAuthInference,
+    openapiSpecId: persistedSpec?.id
   });
   return res.render('admin_mcp_tools', viewModel);
 });
 
-app.post('/admin/mcp/:id/tools/openapi/save', requireAdmin, (req, res) => {
+app.post('/admin/mcp/:id/tools/openapi/save', requireAdmin, async (req, res) => {
   const serverId = req.params.id;
   const key = req.body.key || '';
   const baseUrl = req.body.base_url || '';
   const inferredAuth = parseOpenapiAuthFromBody(req.body);
+  const rawOpenapiSpec = req.body.raw_openapi_spec || '';
+  const openapiSpecIdRaw = req.body.openapi_spec_id;
+  const openapiSpecId = Number.isFinite(Number(openapiSpecIdRaw)) ? Number(openapiSpecIdRaw) : null;
 
   const opsInput = req.body.ops || [];
   const opsArray = Array.isArray(opsInput) ? opsInput : Object.values(opsInput);
@@ -1734,9 +1756,31 @@ app.post('/admin/mcp/:id/tools/openapi/save', requireAdmin, (req, res) => {
       error: 'Select at least one operation to save as an MCP tool.',
       openapiPreview: normalizedOps,
       openapiBaseUrl: baseUrl,
-      openapiAuthInference: inferredAuth
+      openapiAuthInference: inferredAuth,
+      openapiSpecId
     });
     return res.status(400).render('admin_mcp_tools', viewModel);
+  }
+
+  let persistedSpec = null;
+  try {
+    persistedSpec = await persistOpenApiSpecForDemo({
+      rawSpec: rawOpenapiSpec,
+      format: detectSpecFormat(rawOpenapiSpec),
+      existingSpecId: openapiSpecId
+    });
+  } catch (err) {
+    console.error('Failed to persist OpenAPI spec during save', err);
+  }
+
+  let persistedConnection = null;
+  try {
+    persistedConnection = await upsertApiConnectionForDemo({
+      baseUrl,
+      auth: inferredAuth
+    });
+  } catch (err) {
+    console.error('Failed to persist API connection', err);
   }
 
   const existingAuth = getMcpAuthConfigByServerId(serverId);
@@ -1756,6 +1800,7 @@ app.post('/admin/mcp/:id/tools/openapi/save', requireAdmin, (req, res) => {
   }
 
   let errorMessage = '';
+  const selectedOpsForMapping = [];
   for (const op of normalizedOps) {
     if (!op || !op.selected) continue;
 
@@ -1772,6 +1817,8 @@ app.post('/admin/mcp/:id/tools/openapi/save', requireAdmin, (req, res) => {
     const path = op.path || '';
     const parameters = Array.isArray(op.parameters) ? op.parameters : [];
     const requestBody = op.requestBody || null;
+
+    selectedOpsForMapping.push({ ...op, resolvedName: name, description, method, path });
 
     const inputSchema = {
       type: 'object',
@@ -1854,6 +1901,25 @@ app.post('/admin/mcp/:id/tools/openapi/save', requireAdmin, (req, res) => {
     const mcpServer = getMcpServerWithTools(serverId, { includeDisabled: true });
     if (!mcpServer) return res.status(404).send('MCP server not found');
     const viewModel = buildMcpToolsRenderData(req, mcpServer, key, { error: errorMessage });
+    return res.status(400).render('admin_mcp_tools', viewModel);
+  }
+
+  let mappingError = '';
+  try {
+    await replaceToolMappingsForDemo({
+      operations: selectedOpsForMapping,
+      openApiSpecId: (persistedSpec && persistedSpec.id) || openapiSpecId || null,
+      apiConnectionId: persistedConnection?.id || null
+    });
+  } catch (err) {
+    console.error('Failed to persist tool mappings for demo project', err);
+    mappingError = 'Failed to persist tool mappings for the demo project.';
+  }
+
+  if (mappingError) {
+    const mcpServer = getMcpServerWithTools(serverId, { includeDisabled: true });
+    if (!mcpServer) return res.status(404).send('MCP server not found');
+    const viewModel = buildMcpToolsRenderData(req, mcpServer, key, { error: mappingError });
     return res.status(400).render('admin_mcp_tools', viewModel);
   }
 
