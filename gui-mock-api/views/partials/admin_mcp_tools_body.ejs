@@ -153,8 +153,15 @@
               <% openapiPreview.forEach((op, index) => { %>
                 <% const isSelected = typeof op.selected === 'boolean' ? op.selected : true; %>
                 <tr>
-                  <td>
-                    <input type="checkbox" name="ops[<%= index %>][selected]" value="true" <%= isSelected ? 'checked' : '' %> />
+                  <td class="openapi-preview__selector">
+                    <input
+                      type="checkbox"
+                      class="openapi-preview__checkbox"
+                      name="ops[<%= index %>][selected]"
+                      value="true"
+                      aria-label="Select <%= op.method %> <%= op.path %>"
+                      <%= isSelected ? 'checked' : '' %>
+                    />
                   </td>
                   <td>
                     <input type="text" name="ops[<%= index %>][tool_name]" value="<%= op.suggestedName || op.operationId %>" />
