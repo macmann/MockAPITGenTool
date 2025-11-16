@@ -1273,6 +1273,8 @@ app.post('/admin/mcp/:id/tools/openapi/preview', requireAdmin, (req, res) => {
         path: pathKey,
         summary,
         description,
+        parameters: Array.isArray(opData.parameters) ? opData.parameters : [],
+        requestBody: opData.requestBody || null,
         suggestedName: deriveToolNameFromApi({
           name: operationId || summary,
           method: upperMethod,
@@ -1316,11 +1318,73 @@ app.post('/admin/mcp/:id/tools/openapi/save', requireAdmin, (req, res) => {
     const method = String(op.method || '').toUpperCase();
     const path = op.path || '';
 
+    let parameters = [];
+    try {
+      const parsed = op.parametersJson ? JSON.parse(op.parametersJson) : [];
+      parameters = Array.isArray(parsed) ? parsed : [];
+    } catch (err) {
+      console.error('Failed to parse OpenAPI parameters JSON', err);
+    }
+
+    let requestBody = null;
+    try {
+      requestBody = op.requestBodyJson ? JSON.parse(op.requestBodyJson) : null;
+    } catch (err) {
+      console.error('Failed to parse OpenAPI requestBody JSON', err);
+    }
+
     const inputSchema = {
       type: 'object',
       properties: {},
+      required: [],
       additionalProperties: true
     };
+
+    const queryMapping = {};
+    const bodyMapping = {};
+
+    for (const parameter of parameters) {
+      if (!parameter || !parameter.name) continue;
+      const paramName = parameter.name;
+      const paramSchema = parameter.schema || {};
+      const type = paramSchema.type || 'string';
+
+      inputSchema.properties[paramName] = {
+        type,
+        description: parameter.description || ''
+      };
+
+      if (parameter.required) {
+        inputSchema.required.push(paramName);
+      }
+
+      if (parameter.in === 'query') {
+        queryMapping[paramName] = paramName;
+      }
+    }
+
+    const jsonBodySchema = requestBody?.content?.['application/json']?.schema;
+    if (jsonBodySchema && jsonBodySchema.properties && typeof jsonBodySchema.properties === 'object') {
+      const bodyProps = jsonBodySchema.properties;
+      for (const [propName, propSchema] of Object.entries(bodyProps)) {
+        if (!propName) continue;
+        const propType = (propSchema && propSchema.type) || 'string';
+        const propDescription = (propSchema && propSchema.description) || '';
+
+        inputSchema.properties[propName] = {
+          type: propType,
+          description: propDescription
+        };
+
+        if (Array.isArray(jsonBodySchema.required) && jsonBodySchema.required.includes(propName)) {
+          inputSchema.required.push(propName);
+        }
+
+        bodyMapping[propName] = propName;
+      }
+    }
+
+    inputSchema.required = Array.from(new Set(inputSchema.required));
 
     try {
       createMcpTool({
@@ -1331,8 +1395,8 @@ app.post('/admin/mcp/:id/tools/openapi/save', requireAdmin, (req, res) => {
         http_method: method,
         base_url: baseUrl,
         path_template: path,
-        query_mapping_json: JSON.stringify({}),
-        body_mapping_json: JSON.stringify({}),
+        query_mapping_json: JSON.stringify(queryMapping),
+        body_mapping_json: JSON.stringify(bodyMapping),
         headers_mapping_json: JSON.stringify({}),
         enabled: true
       });
