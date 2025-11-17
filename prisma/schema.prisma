@@ -6,7 +6,9 @@ generator client {
 }
 
 datasource db {
-  /// Default to SQLite for local development; update provider & DATABASE_URL for PostgreSQL when deploying.
+  /// Default to SQLite for local development to avoid requiring a Postgres instance.
+  /// When deploying to Postgres (Render, Neon, etc.), change `provider` to `postgresql`
+  /// and point `DATABASE_URL` at your managed database before running migrations.
   provider = "sqlite"
   url      = env("DATABASE_URL")
 }

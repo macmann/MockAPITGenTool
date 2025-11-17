@@ -61,6 +61,11 @@ API-MCPGenTool/
 - **Local development**: Uses SQLite by default. Copy `.env.example` to `.env` and keep `DATABASE_URL="file:./prisma/dev.db"`. Run `npx prisma migrate dev` to create the schema and generate the Prisma Client locally.
 - **Production**: Provision a managed Postgres database (Neon, Supabase, Render, Railway, etc.), set `DATABASE_URL` to the provided connection string, and run `npm run db:migrate:deploy` (or `npx prisma migrate deploy`) during deployment so the schema stays up to date.
 
+## Database configuration
+
+- **Local development**: Point `DATABASE_URL` at SQLite (`file:./prisma/dev.db`, the default) or at a local Postgres instance if you prefer parity with production. After switching providers, run `npx prisma migrate dev` so Prisma regenerates the client for your local database.
+- **Production (Render or any managed Postgres)**: Set `DATABASE_URL` to your managed Postgres connection string and run `npx prisma migrate deploy` as part of the build or release process to apply schema changes safely before the app boots.
+
 ## Deployment
 
 ### Deployment → Vercel
