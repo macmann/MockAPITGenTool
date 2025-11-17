@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
@@ -67,6 +68,9 @@ export default function LoginForm() {
       </button>
       <p className="muted small">
         Default admin: <code>admin@example.com</code> / <code>password</code>
+      </p>
+      <p className="muted small">
+        Don&apos;t have an account? <Link href="/register">Register</Link>
       </p>
     </form>
   );
