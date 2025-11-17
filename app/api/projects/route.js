@@ -61,6 +61,59 @@ export async function POST(req) {
   }
 }
 
+export async function PATCH(req) {
+  const session = await getServerSession(authOptions);
+  const userId = Number(session?.user?.id);
+
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const body = await req.json().catch(() => ({}));
+  const projectId = Number(body?.id || body?.projectId);
+  const name = body?.name?.trim();
+  const descriptionProvided = Object.prototype.hasOwnProperty.call(body || {}, 'description');
+  const description = descriptionProvided ? body?.description?.trim() || null : undefined;
+
+  if (!projectId) {
+    return NextResponse.json({ error: 'Project id is required' }, { status: 400 });
+  }
+
+  if (!name && !descriptionProvided) {
+    return NextResponse.json({ error: 'Nothing to update' }, { status: 400 });
+  }
+
+  if (name === '') {
+    return NextResponse.json({ error: 'Project name is required' }, { status: 400 });
+  }
+
+  const existing = await prisma.project.findFirst({ where: { id: projectId, userId } });
+  if (!existing) {
+    return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+  }
+
+  try {
+    const project = await prisma.project.update({
+      where: { id: projectId },
+      data: {
+        ...(name ? { name } : {}),
+        ...(descriptionProvided ? { description } : {})
+      }
+    });
+
+    return NextResponse.json({ project });
+  } catch (error) {
+    if (error?.code === 'P2002') {
+      return NextResponse.json(
+        { error: 'A project with this name already exists for your account' },
+        { status: 409 }
+      );
+    }
+    console.error('Failed to update project', error);
+    return NextResponse.json({ error: 'Failed to update project' }, { status: 500 });
+  }
+}
+
 export async function DELETE(req) {
   const session = await getServerSession(authOptions);
   const userId = Number(session?.user?.id);

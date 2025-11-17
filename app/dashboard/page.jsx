@@ -59,24 +59,15 @@ export default async function DashboardPage({ searchParams }) {
         Use this dashboard to manage projects, OpenAPI specs, and MCP tooling. Additional pages can reuse the same session via
         <code>getServerSession</code>.
       </p>
-      <ProjectSelector projects={projects} activeProjectId={activeProjectId} />
 
-      <div className="stat">
-        <div className="label">Active project</div>
-        <div className="value">{activeProject.name}</div>
-      </div>
       <div className="grid">
         <div className="panel muted">
-          <h2>Projects ({projects.length})</h2>
-          <p className="small muted">Only projects you own are shown.</p>
-          <ul>
-            {projects.map((project) => (
-              <li key={project.id}>
-                <strong>{project.name}</strong>
-                {project.description ? <span className="muted"> — {project.description}</span> : null}
-              </li>
-            ))}
-          </ul>
+          <h2>My Projects ({projects.length})</h2>
+          <p className="small muted">
+            Projects are unique to your account. Switching projects will scope every API call, spec, and mapping to the selected
+            ID.
+          </p>
+          <ProjectSelector projects={projects} activeProjectId={activeProjectId} />
         </div>
         <div className="panel muted">
           <h2>API connections ({apiConnections.length})</h2>
@@ -87,28 +78,33 @@ export default async function DashboardPage({ searchParams }) {
                 <strong>{conn.baseUrl || 'No base URL'}</strong> — auth type: {conn.authType}
               </li>
             ))}
+            {apiConnections.length === 0 ? <li className="muted small">No API connections for this project.</li> : null}
           </ul>
         </div>
       </div>
       <div className="grid">
         <div className="panel muted">
           <h2>OpenAPI specs ({specs.length})</h2>
+          <p className="small muted">Only specs for project #{activeProjectId} are shown.</p>
           <ul>
             {specs.map((spec) => (
               <li key={spec.id}>
                 Spec #{spec.id} — format: {spec.format}
               </li>
             ))}
+            {specs.length === 0 ? <li className="muted small">Upload or import a spec for this project.</li> : null}
           </ul>
         </div>
         <div className="panel muted">
           <h2>Tool mappings ({toolMappings.length})</h2>
+          <p className="small muted">Every mapping is filtered by user #{userId} and project #{activeProjectId}.</p>
           <ul>
             {toolMappings.map((mapping) => (
               <li key={mapping.id}>
                 {mapping.toolName} → {mapping.method} {mapping.path}
               </li>
             ))}
+            {toolMappings.length === 0 ? <li className="muted small">No mappings defined yet.</li> : null}
           </ul>
         </div>
       </div>
