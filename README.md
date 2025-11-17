@@ -90,6 +90,28 @@ API-MCPGenTool/
 - **Start**: `npm run start`.
 - **Migrations**: On first deploy (or after schema changes), run `npm run db:migrate:deploy` with the production `DATABASE_URL` before starting the app.
 
+### Deployment (Render)
+
+- **Database**: Render's managed Postgres (or any external Postgres) must be wired in through the `DATABASE_URL` environment variable. SQLite files are not supported in the Render runtime filesystem, so always supply a Postgres URL when deploying there.
+- **Build command** (Render dashboard → _Build Command_):
+  ```bash
+  npm install
+  npx prisma generate
+  npm run db:migrate:deploy
+  npm run build
+  ```
+- **Start command** (Render dashboard → _Start Command_):
+  ```bash
+  npm start
+  ```
+- **Required environment variables** (Render dashboard → _Environment_):
+  - `DATABASE_URL` – Postgres connection string (required for boot & migrations).
+  - `NEXTAUTH_SECRET` – strong random secret for NextAuth.
+  - `NEXTAUTH_URL` – public HTTPS URL of your Render service.
+  - `ADMIN_DEFAULT_ENABLED=false` – recommended so production admins must be created manually via the CLI/DB and the default seeded admin stays disabled.
+  - Any other provider keys you need (e.g., `OPENAI_API_KEY`, OAuth keys, etc.).
+- **Migrations at deploy time**: Because Render containers are immutable once built, make sure `npm run db:migrate:deploy` runs before `npm start`. The build command sequence above handles the Prisma client generation and migrations so no runtime path ever falls back to `prisma migrate dev`.
+
 ### Health check
 
 - Endpoint: `GET /api/health`

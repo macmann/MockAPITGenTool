@@ -6,7 +6,7 @@
   "main": "src/index.js",
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "build": "next build",
     "start": "next start",
     "start:api": "node index.js",
     "generate": "node src/index.js",
