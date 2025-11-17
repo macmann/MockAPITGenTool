@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client'
-import { hash } from 'bcryptjs'
+import bcrypt from 'bcryptjs'
 
 import { ensureDefaultProjectForUser } from '../lib/user-context.js'
 
@@ -9,7 +9,7 @@ async function main() {
   const adminEmail = (process.env.ADMIN_DEFAULT_EMAIL || 'admin@example.com').toLowerCase()
   const adminPassword = process.env.ADMIN_DEFAULT_PASSWORD || 'password'
 
-  const passwordHash = await hash(adminPassword, 10)
+  const passwordHash = await bcrypt.hash(adminPassword, 10)
 
   const adminUser = await prisma.user.upsert({
     where: { email: adminEmail },
