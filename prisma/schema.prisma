@@ -6,8 +6,8 @@ generator client {
 }
 
 datasource db {
-  /// Default to SQLite for local development; supports PostgreSQL in production by swapping DATABASE_URL.
-  provider = ["sqlite", "postgresql"]
+  /// Default to SQLite for local development; update provider & DATABASE_URL for PostgreSQL when deploying.
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -116,12 +116,12 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String?  @db.Text
-  access_token      String?  @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String?  @db.Text
+  id_token          String?
   session_state     String?
   oauth_token_secret String?
   oauth_token       String?

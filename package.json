@@ -13,6 +13,7 @@
     "mcp-server": "node mcp-server.js",
     "build:web": "npm run build",
     "start:web": "npm run start",
+    "prepare": "prisma generate",
     "db:migrate": "prisma migrate dev --name init",
     "db:migrate:deploy": "prisma migrate deploy",
     "db:generate": "prisma generate",
