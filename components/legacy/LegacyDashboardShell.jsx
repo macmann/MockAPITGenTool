@@ -1,18 +1,12 @@
 import Image from 'next/image';
-import ProjectSelector from '../dashboard/ProjectSelector.jsx';
-import LegacyApiConnectionsPanel from './LegacyApiConnectionsPanel.jsx';
-import LegacyOpenApiSpecsPanel from './LegacyOpenApiSpecsPanel.jsx';
-import LegacyToolMappingsPanel from './LegacyToolMappingsPanel.jsx';
 
-export default function LegacyDashboardShell({
-  session,
-  projects = [],
-  activeProjectId,
-  apiConnections = [],
-  specs = [],
-  toolMappings = []
-}) {
+import LegacyDashboardApp from './LegacyDashboardApp.jsx';
+import LegacyProjectSwitcher from './LegacyProjectSwitcher.jsx';
+
+export default function LegacyDashboardShell({ session, projects = [], activeProjectId, routes = [], mcpServers = [] }) {
   const activeProject = projects.find((project) => project.id === activeProjectId) || projects[0];
+  const routeCount = routes.length;
+  const serverCount = mcpServers.length;
 
   return (
     <div className="legacy-dashboard">
@@ -22,12 +16,10 @@ export default function LegacyDashboardShell({
             <Image src="/gui-mock-api/logo.svg" alt="MindBridge X" width={48} height={48} />
             <div>
               <div>MindBridge X</div>
-              <p className="legacy-subtle" style={{ margin: 0 }}>Legacy MCP tooling suite</p>
+              <p className="legacy-subtle" style={{ margin: 0 }}>Legacy admin dashboard</p>
             </div>
           </div>
-          <div className="top-bar__banner">
-            Signed in as {session.user?.email} · User #{session.user?.id}
-          </div>
+          <div className="top-bar__banner">Signed in as {session.user?.email}</div>
         </div>
       </div>
 
@@ -37,16 +29,16 @@ export default function LegacyDashboardShell({
             <p className="legacy-muted" style={{ marginBottom: '0.25rem' }}>
               Project #{activeProject?.id || '—'}
             </p>
-            <h2>{activeProject?.name || 'No project yet'}</h2>
+            <h2>{activeProject?.name || 'No project found'}</h2>
             <p>
-              You are editing a workspace that is scoped to your authenticated user and selected project. Every MCP connection,
-              OpenAPI spec, and mock endpoint honors these IDs automatically.
+              The panels below mirror the original Express admin UI—Create/List panels for routes and MCP servers. Every action is
+              automatically scoped to your signed-in account and currently selected project.
             </p>
           </div>
           <div className="page-hero__actions">
-            <span className="status-pill">{projects.length} projects</span>
-            <span className="status-pill">{apiConnections.length} MCP servers</span>
-            <span className="status-pill">{toolMappings.length} tool mappings</span>
+            <span className="status-pill">{routeCount} routes</span>
+            <span className="status-pill">{serverCount} MCP servers</span>
+            <span className="status-pill">User #{session.user?.id}</span>
           </div>
         </section>
 
@@ -54,22 +46,19 @@ export default function LegacyDashboardShell({
           <header className="section-heading">
             <div>
               <h3>Projects</h3>
-              <p>Switching projects reloads every downstream dataset and filters Prisma queries by user + project.</p>
+              <p className="muted" style={{ margin: 0 }}>
+                Choose which project the legacy dashboard should manage. All Prisma queries are filtered by user + project IDs.
+              </p>
             </div>
+            <span className="status-pill">{projects.length} workspaces</span>
           </header>
-          <ProjectSelector projects={projects} activeProjectId={activeProjectId} />
+          <LegacyProjectSwitcher projects={projects} activeProjectId={activeProjectId} />
         </section>
 
-        <div className="legacy-grid">
-          <LegacyOpenApiSpecsPanel projectId={activeProjectId} specs={specs} />
-          <LegacyApiConnectionsPanel projectId={activeProjectId} connections={apiConnections} />
-        </div>
-
-        <LegacyToolMappingsPanel
-          projectId={activeProjectId}
-          specs={specs}
-          connections={apiConnections}
-          toolMappings={toolMappings}
+        <LegacyDashboardApp
+          projectId={activeProject?.id || activeProjectId}
+          routes={routes}
+          mcpServers={mcpServers}
         />
       </main>
     </div>

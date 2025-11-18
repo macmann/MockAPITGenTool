@@ -7,6 +7,51 @@ import { ensureDefaultProjectForUser } from '../../lib/user-context.js';
 import LegacyDashboardShell from '../../components/legacy/LegacyDashboardShell.jsx';
 import './legacy-dashboard.css';
 
+function serializeRoute(route) {
+  return {
+    id: route.id,
+    userId: route.userId,
+    projectId: route.projectId,
+    name: route.name,
+    description: route.description,
+    method: route.method,
+    path: route.path,
+    enabled: route.enabled,
+    matchHeaders: route.matchHeaders || {},
+    responseStatus: route.responseStatus,
+    responseHeaders: route.responseHeaders || {},
+    responseBody: route.responseBody,
+    responseIsJson: route.responseIsJson,
+    responseDelayMs: route.responseDelayMs,
+    templateEnabled: route.templateEnabled,
+    createdAt: route.createdAt,
+    updatedAt: route.updatedAt,
+    vars: (route.vars || []).map((variable) => ({
+      id: variable.id,
+      key: variable.key,
+      value: variable.value,
+      createdAt: variable.createdAt,
+      updatedAt: variable.updatedAt
+    }))
+  };
+}
+
+function serializeServer(server) {
+  return {
+    id: server.id,
+    userId: server.userId,
+    projectId: server.projectId,
+    name: server.name,
+    slug: server.slug,
+    description: server.description,
+    baseUrl: server.baseUrl,
+    isEnabled: server.isEnabled,
+    createdAt: server.createdAt,
+    updatedAt: server.updatedAt,
+    mcpPath: `/mcp/${server.slug}`
+  };
+}
+
 export default async function DashboardPage({ searchParams }) {
   const session = await getServerSession(authOptions);
 
@@ -29,16 +74,13 @@ export default async function DashboardPage({ searchParams }) {
   const activeProject = projects.find((project) => project.id === requestedProjectId) || defaultProject;
   const activeProjectId = activeProject.id;
 
-  const [apiConnections, specs, toolMappings] = await Promise.all([
-    prisma.apiConnection.findMany({
+  const [routes, mcpServers] = await Promise.all([
+    prisma.mockRoute.findMany({
       where: { userId, projectId: activeProjectId },
+      include: { vars: true },
       orderBy: { updatedAt: 'desc' }
     }),
-    prisma.openApiSpec.findMany({
-      where: { userId, projectId: activeProjectId },
-      orderBy: { updatedAt: 'desc' }
-    }),
-    prisma.toolMapping.findMany({
+    prisma.mcpServer.findMany({
       where: { userId, projectId: activeProjectId },
       orderBy: { updatedAt: 'desc' }
     })
@@ -49,9 +91,8 @@ export default async function DashboardPage({ searchParams }) {
       session={session}
       projects={projects}
       activeProjectId={activeProjectId}
-      apiConnections={apiConnections}
-      specs={specs}
-      toolMappings={toolMappings}
+      routes={routes.map(serializeRoute)}
+      mcpServers={mcpServers.map(serializeServer)}
     />
   );
 }
