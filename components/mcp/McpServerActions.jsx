@@ -35,9 +35,9 @@ export default function McpServerActions({ serverId, projectId }) {
       <Link className="table-action" href={`/mcp-servers/${serverId}/tools${projectSuffix}`}>
         Manage tools
       </Link>
-      <button className="table-action" type="button" aria-disabled="true" title="Detailed view coming soon">
+      <Link className="table-action" href={`/mcp-servers/${serverId}${projectSuffix}`}>
         View
-      </button>
+      </Link>
       <button className="table-action" type="button" aria-disabled="true" title="Editing coming soon">
         Edit
       </button>
