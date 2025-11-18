@@ -85,6 +85,14 @@
   font-size: 0.95rem;
 }
 
+.workspace-user__actions {
+  margin-top: 12px;
+}
+
+.workspace-user__actions .btn {
+  width: 100%;
+}
+
 .workspace-main {
   flex: 1;
   padding: 32px;
