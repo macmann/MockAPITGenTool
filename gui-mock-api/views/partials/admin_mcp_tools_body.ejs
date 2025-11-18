@@ -72,15 +72,46 @@
       </label>
     </div>
 
-    <label class="stack">
+    <div class="stack">
       <span>Endpoint</span>
-      <select name="endpoint_id" required>
-        <option value="">-- Select endpoint --</option>
-        <% for (const e of endpoints || []) { %>
-          <option value="<%= e.id %>"><%= e.method %> <%= e.path %></option>
-        <% } %>
-      </select>
-    </label>
+      <% if (!endpoints || endpoints.length === 0) { %>
+        <p class="muted" style="margin: 0;">
+          No endpoints are available yet. <a href="/admin/new?key=<%= encodeURIComponent(query?.key || '') %>">Create one first</a> to expose it as a tool.
+        </p>
+      <% } else { %>
+        <div class="stack" data-single-checkbox-container>
+          <div
+            class="checkbox-grid"
+            data-single-checkbox-group
+            data-required-message="Select an endpoint to expose as a tool."
+          >
+            <% for (let idx = 0; idx < endpoints.length; idx++) { const e = endpoints[idx]; const checkboxId = `endpoint-option-${idx}`; %>
+              <label class="checkbox checkbox-card" for="<%= checkboxId %>">
+                <input
+                  type="checkbox"
+                  id="<%= checkboxId %>"
+                  name="endpoint_id"
+                  value="<%= e.id %>"
+                  data-single-checkbox
+                />
+                <div class="checkbox-card__body">
+                  <div class="checkbox-card__title">
+                    <code><%= e.method %></code>
+                    <span>→</span>
+                    <code><%= e.path %></code>
+                  </div>
+                  <% if (e.description) { %>
+                    <p class="muted" style="margin: 0;"><%= e.description %></p>
+                  <% } %>
+                </div>
+              </label>
+            <% } %>
+          </div>
+          <p class="form-error" data-checkbox-error hidden>Select an endpoint to expose as a tool.</p>
+        </div>
+        <small class="muted">Choose exactly one endpoint to connect to this MCP tool.</small>
+      <% } %>
+    </div>
 
     <label class="stack">
       <span>Arg schema (JSON)</span>

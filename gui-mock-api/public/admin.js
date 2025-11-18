@@ -216,3 +216,87 @@
     });
   }
 })();
+
+(function () {
+  const containers = document.querySelectorAll('[data-single-checkbox-container]');
+  if (!containers.length) {
+    return;
+  }
+
+  containers.forEach((container) => {
+    const group = container.querySelector('[data-single-checkbox-group]');
+    if (!group) {
+      return;
+    }
+    const checkboxes = group.querySelectorAll('input[type="checkbox"][data-single-checkbox]');
+    if (!checkboxes.length) {
+      return;
+    }
+    const errorEl = container.querySelector('[data-checkbox-error]') || null;
+    const requiredMessage = group.dataset.requiredMessage || 'Select at least one option.';
+    const parentForm = container.closest('form');
+
+    const hideError = () => {
+      if (errorEl) {
+        errorEl.hidden = true;
+      }
+    };
+
+    const showError = () => {
+      if (errorEl) {
+        errorEl.hidden = false;
+        errorEl.textContent = requiredMessage;
+      }
+    };
+
+    const unselectOthers = (selected) => {
+      checkboxes.forEach((checkbox) => {
+        const label = checkbox.closest('label');
+        if (checkbox === selected) {
+          if (label) {
+            label.dataset.selected = 'true';
+          }
+          return;
+        }
+        if (checkbox.checked) {
+          checkbox.checked = false;
+        }
+        if (label) {
+          label.removeAttribute('data-selected');
+        }
+      });
+    };
+
+    checkboxes.forEach((checkbox) => {
+      checkbox.addEventListener('change', () => {
+        const label = checkbox.closest('label');
+        if (checkbox.checked) {
+          unselectOthers(checkbox);
+          hideError();
+          if (label) {
+            label.dataset.selected = 'true';
+          }
+        } else if (label) {
+          label.removeAttribute('data-selected');
+        }
+      });
+    });
+
+    if (!parentForm) {
+      return;
+    }
+
+    parentForm.addEventListener('submit', (event) => {
+      const hasSelection = Array.from(checkboxes).some((checkbox) => checkbox.checked);
+      if (hasSelection) {
+        hideError();
+        return;
+      }
+      event.preventDefault();
+      showError();
+      if (checkboxes[0]) {
+        checkboxes[0].focus();
+      }
+    });
+  });
+})();
