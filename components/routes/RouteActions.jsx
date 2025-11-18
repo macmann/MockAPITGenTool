@@ -1,11 +1,13 @@
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-export default function RouteActions({ routeId }) {
+export default function RouteActions({ routeId, projectId }) {
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
+  const projectSuffix = projectId ? `?projectId=${projectId}` : '';
 
   const handleDelete = async () => {
     if (!routeId) return;
@@ -30,9 +32,9 @@ export default function RouteActions({ routeId }) {
 
   return (
     <div className="table-actions">
-      <button className="table-action" type="button" aria-disabled="true" title="Detailed view coming soon">
+      <Link className="table-action" href={`/routes/${routeId}${projectSuffix}`}>
         View
-      </button>
+      </Link>
       <button className="table-action" type="button" aria-disabled="true" title="Editing coming soon">
         Edit
       </button>

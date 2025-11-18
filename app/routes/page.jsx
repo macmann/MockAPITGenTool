@@ -64,7 +64,7 @@ export default async function RoutesPage({ searchParams }) {
                       </span>
                     </td>
                     <td>
-                      <RouteActions routeId={route.id} />
+                      <RouteActions routeId={route.id} projectId={activeProjectId} />
                     </td>
                   </tr>
                 ))}
