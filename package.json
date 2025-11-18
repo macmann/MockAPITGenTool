@@ -13,12 +13,13 @@
     "mcp-server": "node mcp-server.js",
     "build:web": "npm run build",
     "start:web": "npm run start",
-    "prepare": "prisma generate",
-    "db:migrate": "prisma migrate dev --name init",
-    "db:migrate:deploy": "prisma migrate deploy",
-    "db:generate": "prisma generate",
-    "db:studio": "prisma studio",
-    "render:build": "npm run db:generate && npm run db:migrate:deploy && npm run build"
+    "prepare": "node scripts/run-prisma.mjs generate",
+    "db:migrate": "node scripts/run-prisma.mjs migrate dev --name init",
+    "db:migrate:deploy": "node scripts/run-prisma.mjs migrate deploy",
+    "db:generate": "node scripts/run-prisma.mjs generate",
+    "db:studio": "node scripts/run-prisma.mjs studio",
+    "render:build": "npm run db:generate && npm run db:migrate:deploy && npm run build",
+    "prisma": "node scripts/run-prisma.mjs"
   },
   "engines": {
     "node": ">=18.0.0"

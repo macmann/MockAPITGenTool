@@ -20,14 +20,14 @@ MindBridge X provides a visual dashboard for crafting endpoints, a JSON-RPC brid
    ```bash
    cp .env.example .env
    ```
-   For local development, the defaults use SQLite (`DATABASE_URL="file:./prisma/dev.db"`) and a credentials-based NextAuth setup.
+   For local development, the defaults use SQLite (`DATABASE_PROVIDER="sqlite"`, `DATABASE_URL="file:./prisma/dev.db"`) and a credentials-based NextAuth setup.
 2. Install dependencies:
    ```bash
    npm install
    ```
-3. Apply the initial Prisma migrations (creates the SQLite dev database):
+3. Apply the initial Prisma migrations (creates the SQLite dev database). The helper script automatically swaps Prisma connectors based on `DATABASE_PROVIDER`/`DATABASE_URL` so you can point production at Postgres without editing `schema.prisma`:
    ```bash
-   npx prisma migrate dev
+   npm run db:migrate
    ```
 4. Start the Next.js app:
    ```bash
@@ -58,13 +58,14 @@ API-MCPGenTool/
 
 ## Database Setup
 
-- **Local development**: Uses SQLite by default. Copy `.env.example` to `.env` and keep `DATABASE_URL="file:./prisma/dev.db"`. Run `npx prisma migrate dev` to create the schema and generate the Prisma Client locally.
-- **Production**: Provision a managed Postgres database (Neon, Supabase, Render, Railway, etc.), set `DATABASE_URL` to the provided connection string, and run `npm run db:migrate:deploy` (or `npx prisma migrate deploy`) during deployment so the schema stays up to date.
+- **Local development**: Uses SQLite by default. Copy `.env.example` to `.env` and keep `DATABASE_PROVIDER="sqlite"` with `DATABASE_URL="file:./prisma/dev.db"`. Run `npm run db:migrate` to create the schema and generate the Prisma Client locally.
+- **Production**: Provision a managed Postgres database (Neon, Supabase, Render, Railway, etc.), set `DATABASE_PROVIDER="postgresql"`, point `DATABASE_URL` at the provided connection string, and run `npm run db:migrate:deploy` so the schema stays up to date. The Prisma helper (`npm run prisma -- <command>`) rewrites a temporary schema file with the right connector before executing the CLI.
 
 ## Database configuration
 
-- **Local development**: Point `DATABASE_URL` at SQLite (`file:./prisma/dev.db`, the default) or at a local Postgres instance if you prefer parity with production. After switching providers, run `npx prisma migrate dev` so Prisma regenerates the client for your local database.
-- **Production (Render or any managed Postgres)**: Set `DATABASE_URL` to your managed Postgres connection string and run `npx prisma migrate deploy` as part of the build or release process to apply schema changes safely before the app boots.
+- **Local development**: Point `DATABASE_PROVIDER` at `sqlite` with `DATABASE_URL=file:./prisma/dev.db` (the default) or switch both variables to Postgres if you prefer parity with production. After switching providers, run `npm run db:migrate` so Prisma regenerates the client for your local database.
+- **Production (Render or any managed Postgres)**: Set `DATABASE_PROVIDER=postgresql`, point `DATABASE_URL` to your managed Postgres connection string, and run `npm run db:migrate:deploy` as part of the build or release process to apply schema changes safely before the app boots.
+- **Arbitrary Prisma commands**: Use `npm run prisma -- <subcommand>` (for example, `npm run prisma -- migrate dev --name init`) so the helper script can generate a temporary schema with the correct datasource provider before shelling out to the Prisma CLI.
 
 ## Deployment
 
@@ -72,6 +73,7 @@ API-MCPGenTool/
 
 1. Import the GitHub repository into Vercel and select the default project settings.
 2. Configure environment variables in the Vercel dashboard:
+   - `DATABASE_PROVIDER` (`postgresql` in production)
    - `DATABASE_URL` (Postgres connection string)
    - `NEXTAUTH_URL` (your Vercel site URL)
    - `NEXTAUTH_SECRET` (strong random value)
@@ -85,14 +87,14 @@ API-MCPGenTool/
 ### Deployment → Generic Node Host (Render/Railway/etc.)
 
 - **Runtime**: Use Node.js ≥ 18 (per `package.json` engines).
-- **Environment**: Set the same variables as above (`DATABASE_URL`, `NEXTAUTH_URL`, `NEXTAUTH_SECRET`, provider keys, `OPENAI_API_KEY`, etc.).
+- **Environment**: Set the same variables as above (`DATABASE_PROVIDER`, `DATABASE_URL`, `NEXTAUTH_URL`, `NEXTAUTH_SECRET`, provider keys, `OPENAI_API_KEY`, etc.).
 - **Build**: `npm run build`.
 - **Start**: `npm run start`.
 - **Migrations**: On first deploy (or after schema changes), run `npm run db:migrate:deploy` with the production `DATABASE_URL` before starting the app.
 
 ### Deployment (Render)
 
-- **Database**: Render's managed Postgres (or any external Postgres) must be wired in through the `DATABASE_URL` environment variable. SQLite files are not supported in the Render runtime filesystem, so always supply a Postgres URL when deploying there.
+- **Database**: Render's managed Postgres (or any external Postgres) must be wired in through the `DATABASE_URL` environment variable with `DATABASE_PROVIDER=postgresql`. SQLite files are not supported in the Render runtime filesystem, so always supply a Postgres URL when deploying there.
 - **Build command** (Render dashboard → _Build Command_):
   ```bash
   npm install && npm run render:build
@@ -105,6 +107,7 @@ API-MCPGenTool/
   npm start
   ```
 - **Required environment variables** (Render dashboard → _Environment_):
+  - `DATABASE_PROVIDER=postgresql` – ensures Prisma uses the Postgres connector.
   - `DATABASE_URL` – Postgres connection string (required for boot & migrations).
   - `NEXTAUTH_SECRET` – strong random secret for NextAuth.
   - `NEXTAUTH_URL` – public HTTPS URL of your Render service.
@@ -121,13 +124,13 @@ API-MCPGenTool/
 ### Deployment Checklist
 
 - Copy `.env.example` to `.env` and fill in values.
-- Local dev: ensure `DATABASE_URL=file:./prisma/dev.db`.
-- Run `npx prisma migrate dev`.
+- Local dev: ensure `DATABASE_PROVIDER=sqlite` and `DATABASE_URL=file:./prisma/dev.db`.
+- Run `npm run db:migrate`.
 - Run `npm run dev`.
 - Production:
-  - Provision Postgres and set `DATABASE_URL`.
+  - Provision Postgres and set `DATABASE_PROVIDER=postgresql` plus `DATABASE_URL`.
   - Set `NEXTAUTH_URL`, `NEXTAUTH_SECRET`, and any provider keys (e.g., GitHub OAuth).
-  - Run `npx prisma migrate deploy` (or `npm run db:migrate:deploy`).
+  - Run `npm run db:migrate:deploy`.
   - Run `npm run build` and `npm run start`.
 
 ## Screenshots
