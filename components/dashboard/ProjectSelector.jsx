@@ -1,11 +1,12 @@
 'use client';
 
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useState, useTransition } from 'react';
 
 export default function ProjectSelector({ projects = [], activeProjectId }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const [createName, setCreateName] = useState('');
   const [createDescription, setCreateDescription] = useState('');
   const [showCreateForm, setShowCreateForm] = useState(projects.length === 0);
@@ -29,7 +30,8 @@ export default function ProjectSelector({ projects = [], activeProjectId }) {
     }
 
     const query = params.toString();
-    const nextUrl = query ? `/dashboard?${query}` : '/dashboard';
+    const basePath = pathname && pathname !== '/' ? pathname : '/dashboard';
+    const nextUrl = query ? `${basePath}?${query}` : basePath;
 
     router.push(nextUrl);
     router.refresh();

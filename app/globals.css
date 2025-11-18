@@ -126,7 +126,9 @@ p {
   margin-bottom: 12px;
 }
 
-input {
+input,
+select,
+textarea {
   background: #0d1226;
   border: 1px solid var(--border);
   padding: 10px;
@@ -134,8 +136,14 @@ input {
   color: var(--text);
 }
 
-input:focus {
+input:focus,
+select:focus,
+textarea:focus {
   outline: 2px solid var(--accent);
+}
+
+textarea {
+  resize: vertical;
 }
 
 .muted {
