@@ -1,7 +1,11 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Editor from 'react-simple-code-editor';
+import Prism from 'prismjs';
+import 'prismjs/components/prism-json';
+import 'prismjs/components/prism-yaml';
 
 import {
   parseOpenApiSpec,
@@ -37,6 +41,12 @@ export default function OpenApiToolImporter({
   const [error, setError] = useState('');
   const [isParsing, setIsParsing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const highlightSpec = useCallback((code) => {
+    const trimmed = code.trim();
+    const language = trimmed.startsWith('{') ? 'json' : 'yaml';
+    const grammar = Prism.languages[language] || Prism.languages.yaml || Prism.languages.json;
+    return Prism.highlight(code, grammar, language);
+  }, []);
 
   const projectSuffix = projectId ? `?projectId=${projectId}` : '';
   const selectedOperations = useMemo(
@@ -174,14 +184,24 @@ export default function OpenApiToolImporter({
             </button>
           </div>
         </label>
-        <label className="stack">
+        <label className="stack code-editor-field">
           <span>OpenAPI document</span>
-          <textarea
-            rows={12}
-            placeholder={OPENAPI_SNIPPET}
-            value={rawSpec}
-            onChange={(event) => setRawSpec(event.target.value)}
-          />
+          <div className="code-editor">
+            <Editor
+              value={rawSpec}
+              onValueChange={setRawSpec}
+              highlight={highlightSpec}
+              padding={12}
+              textareaId="openapi-spec"
+              placeholder={OPENAPI_SNIPPET}
+              className="code-editor__editor"
+              style={{
+                fontFamily: '"JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace',
+                fontSize: '0.9rem',
+                minHeight: '320px',
+              }}
+            />
+          </div>
         </label>
         <div className="inline" style={{ gap: '0.5rem' }}>
           <button className="btn" type="button" onClick={handlePreview} disabled={isParsing}>
