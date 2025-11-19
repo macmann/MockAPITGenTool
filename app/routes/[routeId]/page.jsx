@@ -211,7 +211,7 @@ export default async function RouteDetailPage({ params, searchParams }) {
           </div>
           <div className="detail-card">
             <h3>API key</h3>
-            <ApiKeyField value={route.requireApiKey ? route.apiKey : ''} helperText={apiKeyHelper} />
+            <ApiKeyField value={route.requireApiKey ? projectApiKey : ''} helperText={apiKeyHelper} />
           </div>
         </div>
 
