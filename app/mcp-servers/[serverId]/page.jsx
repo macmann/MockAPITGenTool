@@ -4,6 +4,7 @@ import { Buffer } from 'buffer';
 
 import AppShell from '../../../components/dashboard/AppShell.jsx';
 import ApiKeyField from '../../../components/shared/ApiKeyField.jsx';
+import McpConnectionExamples from '../../../components/mcp/McpConnectionExamples.jsx';
 import { getDashboardContext } from '../../../lib/dashboard-context.js';
 import prisma from '../../../lib/prisma.js';
 import { buildAbsoluteUrl, getMcpBaseUrl } from '../../../lib/url-utils.js';
@@ -109,36 +110,6 @@ function buildAuthSamples(auth) {
   return { headers, query };
 }
 
-function formatConnectionPayload(endpoint, auth) {
-  const payload = { transport: 'http', url: endpoint };
-  if (Object.keys(auth.headers).length) {
-    payload.headers = auth.headers;
-  }
-  if (Object.keys(auth.query).length) {
-    payload.query = auth.query;
-  }
-  return JSON.stringify(payload, null, 2);
-}
-
-function buildCurlCommand(endpoint, auth, projectApiKey) {
-  const headers = auth.headers || {};
-  const queryParams = auth.query || {};
-  const queryString = Object.entries(queryParams)
-    .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
-    .join('&');
-  const urlWithQuery = queryString ? `${endpoint}?${queryString}` : endpoint;
-  const resolvedApiKey = projectApiKey || headers['x-api-key'] || headers['X-API-Key'] || '<PROJECT_API_KEY>';
-  const lines = [`curl -X POST '${urlWithQuery}'`, "  -H 'Content-Type: application/json'", `  -H 'x-api-key: ${resolvedApiKey}'`];
-  Object.entries(headers).forEach(([key, value]) => {
-    if (key.toLowerCase() === 'x-api-key') {
-      return;
-    }
-    lines.push(`  -H '${key}: ${value}'`);
-  });
-  lines.push("  -d '{\"jsonrpc\":\"2.0\",\"id\":\"list-tools\",\"method\":\"list_tools\"}'");
-  return lines.join(' \\\n');
-}
-
 export default async function McpServerDetailPage({ params, searchParams }) {
   const serverId = Number(params?.serverId);
   if (!serverId) {
@@ -165,12 +136,6 @@ export default async function McpServerDetailPage({ params, searchParams }) {
   const endpoint = buildAbsoluteUrl(mcpBaseUrl, `/mcp/${server.slug}`);
   const authSamples = buildAuthSamples(server.authConfig);
   const projectApiKey = server.project?.apiKey;
-  const authWithProjectKey = {
-    headers: { ...(authSamples.headers || {}), 'x-api-key': projectApiKey || '<PROJECT_API_KEY>' },
-    query: { ...(authSamples.query || {}) },
-  };
-  const connectionJson = formatConnectionPayload(endpoint, authWithProjectKey);
-  const curlCommand = buildCurlCommand(endpoint, authWithProjectKey, projectApiKey);
 
   return (
     <AppShell session={session} projects={projects} activeProjectId={projectId}>
@@ -249,15 +214,12 @@ export default async function McpServerDetailPage({ params, searchParams }) {
           </div>
         </div>
 
-        <div className="detail-stack">
-          <h3>Connection payload</h3>
-          <pre className="code-block">{connectionJson}</pre>
-        </div>
-
-        <div className="detail-stack">
-          <h3>JSON-RPC cURL example</h3>
-          <pre className="code-block">{curlCommand}</pre>
-        </div>
+        <McpConnectionExamples
+          endpoint={endpoint}
+          authSamples={authSamples}
+          projectApiKey={projectApiKey}
+          requireApiKey={server.requireApiKey}
+        />
 
         <div className="detail-stack">
           <h3>Configured tools</h3>
