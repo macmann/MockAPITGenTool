@@ -5,7 +5,7 @@ import { authOptions } from './auth.js';
 import prisma from './prisma.js';
 import { ensureDefaultProjectForUser, findProjectForUser } from './user-context.js';
 
-function readApiKeyHeader(request) {
+export function readApiKeyHeader(request) {
   if (!request?.headers) return null;
   const headerValue = request.headers.get('x-api-key') ?? request.headers.get('X-API-Key');
   if (!headerValue) return null;
