@@ -3,6 +3,7 @@ import Link from 'next/link';
 import prisma from '../../lib/prisma.js';
 import { getDashboardContext } from '../../lib/dashboard-context.js';
 import AppShell from '../../components/dashboard/AppShell.jsx';
+import ProjectApiKeyCard from '../../components/dashboard/ProjectApiKeyCard.jsx';
 
 function withProjectHref(base, projectId) {
   if (!projectId) return base;
@@ -37,6 +38,7 @@ export default async function DashboardPage({ searchParams }) {
           <p className="label">Current project</p>
           <h2>{activeProject?.name}</h2>
           <p>{activeProject?.description || 'A dedicated workspace for your MCP-ready mock APIs.'}</p>
+          <ProjectApiKeyCard apiKey={activeProject?.apiKey} />
         </header>
         <div className="card-grid">
           <div className="stat-card">

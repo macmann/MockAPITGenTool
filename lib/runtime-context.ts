@@ -2,7 +2,24 @@
 import { getServerSession } from 'next-auth';
 
 import { authOptions } from './auth.js';
+import prisma from './prisma.js';
 import { ensureDefaultProjectForUser, findProjectForUser } from './user-context.js';
+
+function readApiKeyHeader(request) {
+  if (!request?.headers) return null;
+  const headerValue = request.headers.get('x-api-key') ?? request.headers.get('X-API-Key');
+  if (!headerValue) return null;
+  const trimmed = headerValue.trim();
+  return trimmed.length ? trimmed : null;
+}
+
+function missingApiKeyError() {
+  return Object.assign(new Error('Missing API key'), { status: 401 });
+}
+
+function invalidApiKeyError() {
+  return Object.assign(new Error('Invalid API key'), { status: 401 });
+}
 
 export async function requireUserSession() {
   const session = await getServerSession(authOptions);
@@ -31,8 +48,42 @@ export async function resolveActiveProject(userId, request) {
   return project;
 }
 
+async function resolveProjectFromApiKey(request) {
+  const apiKey = readApiKeyHeader(request);
+  if (!apiKey) {
+    throw missingApiKeyError();
+  }
+
+  const project = await prisma.project.findUnique({ where: { apiKey } });
+  if (!project) {
+    throw invalidApiKeyError();
+  }
+
+  return { project, apiKey };
+}
+
 export async function getRuntimeContext(request) {
-  const { userId, session } = await requireUserSession();
-  const project = await resolveActiveProject(userId, request);
-  return { session, userId, project, projectId: project?.id };
+  const session = await getServerSession(authOptions);
+  const userId = Number(session?.user?.id);
+
+  if (userId) {
+    const project = await resolveActiveProject(userId, request);
+    return {
+      session,
+      userId,
+      project,
+      projectId: project?.id,
+      authStrategy: 'session',
+    };
+  }
+
+  const { project, apiKey } = await resolveProjectFromApiKey(request);
+  return {
+    session: null,
+    userId: project.userId,
+    project,
+    projectId: project?.id,
+    apiKey,
+    authStrategy: 'apiKey',
+  };
 }

@@ -287,6 +287,36 @@
   font-size: 0.85rem;
 }
 
+.api-key-card {
+  margin-top: 12px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.api-key-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.api-key-card__value {
+  display: block;
+  font-family: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+  font-size: 0.95rem;
+  word-break: break-all;
+  color: #fff;
+}
+
+.api-key-card .helper-text {
+  margin: 0;
+}
+
 @media (max-width: 1024px) {
   .workspace-shell {
     flex-direction: column;

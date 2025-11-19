@@ -117,16 +117,21 @@ function formatConnectionPayload(endpoint, auth) {
   return JSON.stringify(payload, null, 2);
 }
 
-function buildCurlCommand(endpoint, auth) {
-  const lines = [`curl -X POST '${endpoint}'`, "  -H 'Content-Type: application/json'"];
-  Object.entries(auth.headers).forEach(([key, value]) => {
-    lines.push(`  -H '${key}: ${value}'`);
-  });
-  const queryString = Object.entries(auth.query)
+function buildCurlCommand(endpoint, auth, projectApiKey) {
+  const headers = auth.headers || {};
+  const queryParams = auth.query || {};
+  const queryString = Object.entries(queryParams)
     .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
     .join('&');
   const urlWithQuery = queryString ? `${endpoint}?${queryString}` : endpoint;
-  lines[0] = `curl -X POST '${urlWithQuery}'`;
+  const resolvedApiKey = projectApiKey || headers['x-api-key'] || headers['X-API-Key'] || '<PROJECT_API_KEY>';
+  const lines = [`curl -X POST '${urlWithQuery}'`, "  -H 'Content-Type: application/json'", `  -H 'x-api-key: ${resolvedApiKey}'`];
+  Object.entries(headers).forEach(([key, value]) => {
+    if (key.toLowerCase() === 'x-api-key') {
+      return;
+    }
+    lines.push(`  -H '${key}: ${value}'`);
+  });
   lines.push("  -d '{\"jsonrpc\":\"2.0\",\"id\":\"list-tools\",\"method\":\"list_tools\"}'");
   return lines.join(' \\\n');
 }
@@ -143,6 +148,7 @@ export default async function McpServerDetailPage({ params, searchParams }) {
     include: {
       authConfig: true,
       tools: { orderBy: { name: 'asc' } },
+      project: { select: { id: true, apiKey: true } },
     },
   });
   if (!server) {
@@ -155,8 +161,13 @@ export default async function McpServerDetailPage({ params, searchParams }) {
   const mcpBaseUrl = getMcpBaseUrl();
   const endpoint = buildAbsoluteUrl(mcpBaseUrl, `/mcp/${server.slug}`);
   const authSamples = buildAuthSamples(server.authConfig);
-  const connectionJson = formatConnectionPayload(endpoint, authSamples);
-  const curlCommand = buildCurlCommand(endpoint, authSamples);
+  const projectApiKey = server.project?.apiKey;
+  const authWithProjectKey = {
+    headers: { ...(authSamples.headers || {}), 'x-api-key': projectApiKey || '<PROJECT_API_KEY>' },
+    query: { ...(authSamples.query || {}) },
+  };
+  const connectionJson = formatConnectionPayload(endpoint, authWithProjectKey);
+  const curlCommand = buildCurlCommand(endpoint, authWithProjectKey, projectApiKey);
 
   return (
     <AppShell session={session} projects={projects} activeProjectId={projectId}>
