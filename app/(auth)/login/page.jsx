@@ -19,9 +19,8 @@ export default async function LoginPage() {
         <div className="brand-mark">
           <div className="brand-icon">MB</div>
           <div>
-            <p className="brand-eyebrow">Brillar Platform</p>
             <Link className="brand" href="/">
-              MindBridge X
+              MindBridgeX
             </Link>
           </div>
         </div>
@@ -32,7 +31,7 @@ export default async function LoginPage() {
         <div className="auth-hero__glow" />
         <div className="auth-grid">
           <section className="auth-copy">
-            <p className="eyebrow">Secure access to the Brillar control center</p>
+            <p className="eyebrow">Secure access to the MindBridgeX control center</p>
             <h1>Sign in with confidence</h1>
             <p className="lead">
               Keep your work flowing with a refined sign-in experience built for security-focused teams. Encryption in transit
@@ -54,7 +53,7 @@ export default async function LoginPage() {
               <span className="logo-chip">Aurora Labs</span>
               <span className="logo-chip">Northwind</span>
               <span className="logo-chip">Acme Robotics</span>
-              <span className="logo-chip">Brillar</span>
+              <span className="logo-chip">MindBridgeX</span>
             </div>
           </section>
 

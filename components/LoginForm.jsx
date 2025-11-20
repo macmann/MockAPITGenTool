@@ -41,7 +41,7 @@ export default function LoginForm() {
       <div className="card-heading">
         <div className="badge">Workspace access</div>
         <h2>Sign in</h2>
-        <p className="muted">Use your company email to continue to Brillar.</p>
+        <p className="muted">Use your company email to continue to MindBridgeX.</p>
       </div>
       {error ? <p className="error">{error}</p> : null}
       <label className="field">
