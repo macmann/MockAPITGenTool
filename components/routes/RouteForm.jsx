@@ -47,7 +47,7 @@ export default function RouteForm({ projectId, initialRoute }) {
     payload.enabled = toBoolean(payload.enabled);
     payload.responseIsJson = toBoolean(payload.responseIsJson);
     payload.templateEnabled = toBoolean(payload.templateEnabled);
-    payload.requireApiKey = toBoolean(payload.requireApiKey ?? true);
+    payload.requireApiKey = toBoolean(payload.requireApiKey);
     payload.responseDelayMs = Number(payload.responseDelayMs || 0);
 
     if (isEdit) {

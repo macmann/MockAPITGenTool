@@ -21,7 +21,7 @@ export default function McpServerForm({ projectId, initialServer }) {
     const payload = Object.fromEntries(formData.entries());
 
     payload.isEnabled = toBoolean(payload.isEnabled);
-    payload.requireApiKey = toBoolean(payload.requireApiKey ?? true);
+    payload.requireApiKey = toBoolean(payload.requireApiKey);
 
     if (isEdit) {
       payload.id = initialServer.id;
