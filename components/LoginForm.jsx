@@ -37,9 +37,12 @@ export default function LoginForm() {
   }
 
   return (
-    <form className="panel" onSubmit={handleSubmit}>
-      <h2>Sign in</h2>
-      <p className="muted">Use email + password or the default admin bypass.</p>
+    <form className="panel auth-card" onSubmit={handleSubmit}>
+      <div className="card-heading">
+        <div className="badge">Workspace access</div>
+        <h2>Sign in</h2>
+        <p className="muted">Use your company email to continue to MindBridgeX.</p>
+      </div>
       {error ? <p className="error">{error}</p> : null}
       <label className="field">
         <span>Email</span>
@@ -66,12 +69,8 @@ export default function LoginForm() {
       <button className="btn" type="submit" disabled={loading}>
         {loading ? 'Signing in…' : 'Continue'}
       </button>
-      <p className="muted small">
-        Default admin: <code>admin@example.com</code> / <code>password</code>
-      </p>
-      <p className="muted small">
-        Don&apos;t have an account? <Link href="/register">Register</Link>
-      </p>
+      <p className="muted small">Passwords are never stored or shown in plain text.</p>
+      <p className="muted small">Don&apos;t have an account? <Link href="/register">Register</Link></p>
     </form>
   );
 }

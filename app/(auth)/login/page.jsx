@@ -14,31 +14,50 @@ export default async function LoginPage() {
   }
 
   return (
-    <div className="shell">
-      <header className="header">
-        <Link className="brand" href="/">
-          MindBridge X
-        </Link>
+    <div className="auth-shell">
+      <header className="auth-header">
+        <div className="brand-mark">
+          <div className="brand-icon">MB</div>
+          <div>
+            <Link className="brand" href="/">
+              MindBridgeX
+            </Link>
+          </div>
+        </div>
         <AuthButtons />
       </header>
-      <div className="main">
-        <div className="split">
+
+      <div className="auth-hero">
+        <div className="auth-hero__glow" />
+        <div className="auth-grid">
+          <section className="auth-copy">
+            <p className="eyebrow">Secure access to the MindBridgeX control center</p>
+            <h1>Sign in with confidence</h1>
+            <p className="lead">
+              Keep your work flowing with a refined sign-in experience built for security-focused teams. Encryption in transit
+              and role-aware sessions keep your workspace safe.
+            </p>
+
+            <div className="stats">
+              <div className="stat-card">
+                <div className="stat-value">99.99%</div>
+                <div className="stat-label">Uptime safeguarded</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-value">S/SO</div>
+                <div className="stat-label">SOC2-ready controls</div>
+              </div>
+            </div>
+
+            <div className="logo-row" aria-label="Trusted partners">
+              <span className="logo-chip">Aurora Labs</span>
+              <span className="logo-chip">Northwind</span>
+              <span className="logo-chip">Acme Robotics</span>
+              <span className="logo-chip">MindBridgeX</span>
+            </div>
+          </section>
+
           <LoginForm />
-          <aside className="panel info">
-            <h3>Why credentials?</h3>
-            <p>
-              This demo uses a simple email + password provider backed by Prisma so that each user has isolated data. The
-              default admin bypass (<code>admin@example.com</code> / <code>password</code>) seeds a privileged account without
-              extra setup.
-            </p>
-            <p>
-              Sessions include the user id and email, making it easy to authorize requests server-side or in API routes with
-              <code>getServerSession</code>.
-            </p>
-            <Link className="btn ghost" href="/">
-              Return home
-            </Link>
-          </aside>
         </div>
       </div>
     </div>
