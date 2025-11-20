@@ -38,9 +38,9 @@ export default function McpServerActions({ serverId, projectId }) {
       <Link className="table-action" href={`/mcp-servers/${serverId}${projectSuffix}`}>
         View
       </Link>
-      <button className="table-action" type="button" aria-disabled="true" title="Editing coming soon">
+      <Link className="table-action" href={`/mcp-servers/${serverId}/edit${projectSuffix}`}>
         Edit
-      </button>
+      </Link>
       <button className="table-action" type="button" onClick={handleDelete} disabled={isDeleting}>
         {isDeleting ? 'Deleting…' : 'Delete'}
       </button>

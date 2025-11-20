@@ -1,6 +1,6 @@
 import AppShell from '../../../components/dashboard/AppShell.jsx';
 import { getDashboardContext } from '../../../lib/dashboard-context.js';
-import CreateRouteForm from '../../../components/routes/CreateRouteForm.jsx';
+import RouteForm from '../../../components/routes/RouteForm.jsx';
 
 export default async function NewRoutePage({ searchParams }) {
   const { session, projects, activeProjectId } = await getDashboardContext(searchParams);
@@ -12,7 +12,7 @@ export default async function NewRoutePage({ searchParams }) {
           <h2>Create route</h2>
           <p>Build a predictable mock endpoint for the active project.</p>
         </header>
-        <CreateRouteForm projectId={activeProjectId} />
+        <RouteForm projectId={activeProjectId} />
       </section>
     </AppShell>
   );

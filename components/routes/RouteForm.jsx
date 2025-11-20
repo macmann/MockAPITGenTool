@@ -25,11 +25,13 @@ function toBoolean(value) {
   return value === 'on' || value === true || value === 'true';
 }
 
-export default function CreateRouteForm({ projectId }) {
+export default function RouteForm({ projectId, initialRoute }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const isEdit = Boolean(initialRoute?.id);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -46,31 +48,48 @@ export default function CreateRouteForm({ projectId }) {
     payload.responseIsJson = toBoolean(payload.responseIsJson);
     payload.templateEnabled = toBoolean(payload.templateEnabled);
     payload.requireApiKey = toBoolean(payload.requireApiKey ?? true);
-    payload.projectId = projectId;
     payload.responseDelayMs = Number(payload.responseDelayMs || 0);
+
+    if (isEdit) {
+      payload.id = initialRoute.id;
+    } else {
+      payload.projectId = projectId;
+    }
 
     setMessage('');
     setIsSubmitting(true);
     try {
       const response = await fetch('/api/mock-routes', {
-        method: 'POST',
+        method: isEdit ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setMessage(data?.error || 'Unable to create route');
+        setMessage(data?.error || (isEdit ? 'Unable to update route' : 'Unable to create route'));
         return;
       }
 
-      const nextProjectId = searchParams.get('projectId') || projectId;
-      const nextUrl = nextProjectId ? `/routes?projectId=${nextProjectId}` : '/routes';
-      router.push(nextUrl);
+      const nextProjectId = searchParams.get('projectId') || initialRoute?.projectId || projectId;
+      if (isEdit) {
+        const targetRouteId = initialRoute?.id || data?.route?.id;
+        const nextUrl = targetRouteId
+          ? nextProjectId
+            ? `/routes/${targetRouteId}?projectId=${nextProjectId}`
+            : `/routes/${targetRouteId}`
+          : nextProjectId
+          ? `/routes?projectId=${nextProjectId}`
+          : '/routes';
+        router.push(nextUrl);
+      } else {
+        const nextUrl = nextProjectId ? `/routes?projectId=${nextProjectId}` : '/routes';
+        router.push(nextUrl);
+      }
       router.refresh();
     } catch (error) {
-      console.error('Failed to create route', error);
-      setMessage('Unable to create route');
+      console.error(isEdit ? 'Failed to update route' : 'Failed to create route', error);
+      setMessage(isEdit ? 'Unable to update route' : 'Unable to create route');
     } finally {
       setIsSubmitting(false);
     }
@@ -84,15 +103,26 @@ export default function CreateRouteForm({ projectId }) {
           <p>Give the route a recognizable name so your teammates know what it returns.</p>
           <div className="field">
             <label htmlFor="route-name">Name</label>
-            <input id="route-name" name="name" placeholder="Catalog search" required />
+            <input
+              id="route-name"
+              name="name"
+              placeholder="Catalog search"
+              required
+              defaultValue={initialRoute?.name || ''}
+            />
           </div>
           <div className="field">
             <label htmlFor="route-description">Description</label>
-            <input id="route-description" name="description" placeholder="Optional summary" />
+            <input
+              id="route-description"
+              name="description"
+              placeholder="Optional summary"
+              defaultValue={initialRoute?.description || ''}
+            />
             <p className="helper-text">Short hint for future you.</p>
           </div>
           <label className="field" style={{ flexDirection: 'row', gap: '8px', alignItems: 'center' }}>
-            <input type="checkbox" name="enabled" defaultChecked /> Enable immediately
+            <input type="checkbox" name="enabled" defaultChecked={initialRoute ? initialRoute.enabled : true} /> Enable immediately
           </label>
         </div>
 
@@ -101,7 +131,7 @@ export default function CreateRouteForm({ projectId }) {
           <p>Define how the MCP tool will call this mock endpoint.</p>
           <div className="field">
             <label htmlFor="route-method">Method</label>
-            <select id="route-method" name="method" defaultValue="GET">
+            <select id="route-method" name="method" defaultValue={initialRoute?.method || 'GET'}>
               {['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'].map((method) => (
                 <option key={method} value={method}>
                   {method}
@@ -111,15 +141,32 @@ export default function CreateRouteForm({ projectId }) {
           </div>
           <div className="field">
             <label htmlFor="route-path">Path</label>
-            <input id="route-path" name="path" placeholder="/api/v1/catalog" required />
+            <input
+              id="route-path"
+              name="path"
+              placeholder="/api/v1/catalog"
+              required
+              defaultValue={initialRoute?.path || ''}
+            />
             <p className="helper-text">Relative path only. Example: /catalog/items</p>
           </div>
           <div className="field">
             <label htmlFor="route-delay">Delay (ms)</label>
-            <input id="route-delay" type="number" name="responseDelayMs" placeholder="0" min="0" />
+            <input
+              id="route-delay"
+              type="number"
+              name="responseDelayMs"
+              placeholder="0"
+              min="0"
+              defaultValue={
+                initialRoute && typeof initialRoute.responseDelayMs === 'number'
+                  ? initialRoute.responseDelayMs
+                  : ''
+              }
+            />
           </div>
           <label className="field" style={{ flexDirection: 'row', gap: '8px', alignItems: 'center' }}>
-            <input type="checkbox" name="requireApiKey" defaultChecked /> Require x-api-key header
+            <input type="checkbox" name="requireApiKey" defaultChecked={initialRoute ? initialRoute.requireApiKey : true} /> Require x-api-key header
           </label>
         </div>
 
@@ -139,7 +186,7 @@ export default function CreateRouteForm({ projectId }) {
           </div>
           <div className="field">
             <label htmlFor="route-status">Status code</label>
-            <select id="route-status" name="responseStatus" defaultValue="200">
+            <select id="route-status" name="responseStatus" defaultValue={String(initialRoute?.responseStatus ?? 200)}>
               {[200, 201, 204, 400, 401, 403, 404, 500].map((code) => (
                 <option key={code} value={code}>
                   {code}
@@ -154,19 +201,20 @@ export default function CreateRouteForm({ projectId }) {
               name="responseBody"
               rows={8}
               placeholder={'{\n  "message": "Example response",\n  "data": []\n}'}
+              defaultValue={initialRoute?.responseBody || ''}
             />
           </div>
           <label className="field" style={{ flexDirection: 'row', gap: '8px', alignItems: 'center' }}>
-            <input type="checkbox" name="responseIsJson" defaultChecked /> Format as JSON
+            <input type="checkbox" name="responseIsJson" defaultChecked={initialRoute ? initialRoute.responseIsJson : true} /> Format as JSON
           </label>
           <label className="field" style={{ flexDirection: 'row', gap: '8px', alignItems: 'center' }}>
-            <input type="checkbox" name="templateEnabled" /> Enable Handlebars templates
+            <input type="checkbox" name="templateEnabled" defaultChecked={initialRoute ? initialRoute.templateEnabled : false} /> Enable Handlebars templates
           </label>
         </div>
       </div>
       {message ? <p className="error">{message}</p> : null}
       <button className="btn" type="submit" disabled={isSubmitting}>
-        {isSubmitting ? 'Saving…' : 'Create route'}
+        {isSubmitting ? 'Saving…' : isEdit ? 'Save changes' : 'Create route'}
       </button>
     </form>
   );
