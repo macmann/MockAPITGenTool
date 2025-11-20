@@ -92,9 +92,18 @@
               <input name="description" placeholder="Optional notes" value="${escapeHtml(currentEndpoint.description || '')}" />
             </label>
           </div>
-          <label class="checkbox">
-            <input type="checkbox" name="enabled" value="true" ${currentEndpoint.enabled !== false ? 'checked' : ''} />
-            <span>Make this endpoint live right away</span>
+          <label class="checkbox endpoint-toggle" for="endpoint_enabled">
+            <input
+              type="checkbox"
+              name="enabled"
+              value="true"
+              id="endpoint_enabled"
+              ${currentEndpoint.enabled !== false ? 'checked' : ''}
+            />
+            <span class="endpoint-toggle-track" aria-hidden="true">
+              <span class="endpoint-toggle-thumb"></span>
+            </span>
+            <span class="endpoint-toggle-label">Make this endpoint live right away</span>
           </label>
         </fieldset>
 

@@ -378,6 +378,61 @@
         border-radius: 0.35rem;
       }
 
+      .endpoint-toggle {
+        align-items: center;
+        gap: 0.9rem;
+      }
+
+      .endpoint-toggle input[type='checkbox'] {
+        position: absolute;
+        opacity: 0;
+        width: 1px;
+        height: 1px;
+        margin: 0;
+      }
+
+      .endpoint-toggle-track {
+        position: relative;
+        width: 50px;
+        height: 28px;
+        display: inline-flex;
+        align-items: center;
+        padding: 4px;
+        border-radius: 999px;
+        background: #dce6ff;
+        border: 1px solid rgba(13, 110, 253, 0.3);
+        transition: background 0.15s ease, border-color 0.15s ease;
+        flex-shrink: 0;
+      }
+
+      .endpoint-toggle-thumb {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: #fff;
+        box-shadow: 0 4px 10px rgba(13, 110, 253, 0.25);
+        transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+      }
+
+      .endpoint-toggle input[type='checkbox']:checked + .endpoint-toggle-track {
+        background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
+        border-color: rgba(13, 110, 253, 0.35);
+      }
+
+      .endpoint-toggle input[type='checkbox']:checked + .endpoint-toggle-track .endpoint-toggle-thumb {
+        transform: translateX(20px);
+        box-shadow: 0 4px 12px rgba(102, 16, 242, 0.3);
+      }
+
+      .endpoint-toggle input[type='checkbox']:focus-visible + .endpoint-toggle-track {
+        outline: 2px solid rgba(13, 110, 253, 0.6);
+        outline-offset: 3px;
+      }
+
+      .endpoint-toggle-label {
+        font-weight: 600;
+      }
+
       .checkbox-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
