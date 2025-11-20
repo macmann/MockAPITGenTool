@@ -162,13 +162,19 @@
             <small class="muted">Write the message you’d like the API to return. Templates can populate this automatically.</small>
           </label>
           <div class="form-grid form-grid--two">
-            <label class="checkbox">
-              <input type="checkbox" name="response_is_json" value="true" ${currentEndpoint.response_is_json ? 'checked' : ''} data-response-json />
-              <span>Format response as JSON<br><small class="muted">We’ll validate the JSON for you before saving.</small></span>
+            <label class="checkbox toggle" for="response_is_json">
+              <input type="checkbox" name="response_is_json" id="response_is_json" value="true" ${currentEndpoint.response_is_json ? 'checked' : ''} data-response-json />
+              <span class="toggle-track" aria-hidden="true">
+                <span class="toggle-thumb"></span>
+              </span>
+              <span class="toggle-label">Format response as JSON<br><small class="muted">We’ll validate the JSON for you before saving.</small></span>
             </label>
-            <label class="checkbox">
-              <input type="checkbox" name="template_enabled" value="true" ${currentEndpoint.template_enabled ? 'checked' : ''} data-template-toggle />
-              <span>Use Handlebars placeholders<br><small class="muted" data-template-hint>Great when you want to insert dynamic values from Vars. We’ll automatically enable this when we detect <code>{{...}}</code> placeholders in your response.</small></span>
+            <label class="checkbox toggle" for="template_enabled">
+              <input type="checkbox" name="template_enabled" id="template_enabled" value="true" ${currentEndpoint.template_enabled ? 'checked' : ''} data-template-toggle />
+              <span class="toggle-track" aria-hidden="true">
+                <span class="toggle-thumb"></span>
+              </span>
+              <span class="toggle-label">Use Handlebars placeholders<br><small class="muted" data-template-hint>Great when you want to insert dynamic values from Vars. We’ll automatically enable this when we detect <code>{{...}}</code> placeholders in your response.</small></span>
             </label>
           </div>
         </fieldset>

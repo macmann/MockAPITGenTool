@@ -57,9 +57,18 @@
       </label>
     </div>
 
-    <label class="checkbox">
-      <input type="checkbox" name="is_enabled" value="true" <%= s.is_enabled ? 'checked' : '' %>/>
-      <span>Enable this MCP server immediately</span>
+    <label class="checkbox toggle" for="mcp_is_enabled">
+      <input
+        type="checkbox"
+        id="mcp_is_enabled"
+        name="is_enabled"
+        value="true"
+        <%= s.is_enabled ? 'checked' : '' %>
+      />
+      <span class="toggle-track" aria-hidden="true">
+        <span class="toggle-thumb"></span>
+      </span>
+      <span class="toggle-label">Enable this MCP server immediately</span>
     </label>
 
     <button class="button primary" type="submit" style="justify-self: flex-start;">Save server</button>

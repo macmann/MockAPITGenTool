@@ -378,12 +378,14 @@
         border-radius: 0.35rem;
       }
 
-      .endpoint-toggle {
+      .endpoint-toggle,
+      .checkbox.toggle {
         align-items: center;
         gap: 0.9rem;
       }
 
-      .endpoint-toggle input[type='checkbox'] {
+      .endpoint-toggle input[type='checkbox'],
+      .checkbox.toggle input[type='checkbox'] {
         position: absolute;
         opacity: 0;
         width: 1px;
@@ -391,7 +393,8 @@
         margin: 0;
       }
 
-      .endpoint-toggle-track {
+      .endpoint-toggle-track,
+      .toggle-track {
         position: relative;
         width: 50px;
         height: 28px;
@@ -405,7 +408,8 @@
         flex-shrink: 0;
       }
 
-      .endpoint-toggle-thumb {
+      .endpoint-toggle-thumb,
+      .toggle-thumb {
         width: 18px;
         height: 18px;
         border-radius: 50%;
@@ -414,22 +418,26 @@
         transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
       }
 
-      .endpoint-toggle input[type='checkbox']:checked + .endpoint-toggle-track {
+      .endpoint-toggle input[type='checkbox']:checked + .endpoint-toggle-track,
+      .checkbox.toggle input[type='checkbox']:checked + .toggle-track {
         background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
         border-color: rgba(13, 110, 253, 0.35);
       }
 
-      .endpoint-toggle input[type='checkbox']:checked + .endpoint-toggle-track .endpoint-toggle-thumb {
+      .endpoint-toggle input[type='checkbox']:checked + .endpoint-toggle-track .endpoint-toggle-thumb,
+      .checkbox.toggle input[type='checkbox']:checked + .toggle-track .toggle-thumb {
         transform: translateX(20px);
         box-shadow: 0 4px 12px rgba(102, 16, 242, 0.3);
       }
 
-      .endpoint-toggle input[type='checkbox']:focus-visible + .endpoint-toggle-track {
+      .endpoint-toggle input[type='checkbox']:focus-visible + .endpoint-toggle-track,
+      .checkbox.toggle input[type='checkbox']:focus-visible + .toggle-track {
         outline: 2px solid rgba(13, 110, 253, 0.6);
         outline-offset: 3px;
       }
 
-      .endpoint-toggle-label {
+      .endpoint-toggle-label,
+      .toggle-label {
         font-weight: 600;
       }
 
