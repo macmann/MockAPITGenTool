@@ -7,6 +7,7 @@ const navItems = [
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/routes', label: 'Routes' },
   { href: '/mcp-servers', label: 'MCP Servers' },
+  { href: '/account', label: 'Account' },
 ];
 
 function isActive(pathname, href) {

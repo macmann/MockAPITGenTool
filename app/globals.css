@@ -434,6 +434,14 @@ textarea {
   border-radius: 8px;
 }
 
+.success {
+  color: #4ade80;
+  background: rgba(74, 222, 128, 0.12);
+  border: 1px solid rgba(74, 222, 128, 0.35);
+  padding: 8px 10px;
+  border-radius: 8px;
+}
+
 .stat {
   background: rgba(255, 255, 255, 0.03);
   border: 1px dashed var(--border);

@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import Link from 'next/link';
 import AppNavigation from './AppNavigation.jsx';
 import ProjectSelector from './ProjectSelector.jsx';
 import LogoutButton from './LogoutButton.jsx';
@@ -20,6 +21,9 @@ export default function AppShell({ session, projects = [], activeProjectId, chil
           <p className="label">Signed in</p>
           <p className="workspace-user__value">{session?.user?.email}</p>
           <div className="workspace-user__actions">
+            <Link className="btn ghost" href="/account">
+              Change password
+            </Link>
             <LogoutButton />
           </div>
         </div>
