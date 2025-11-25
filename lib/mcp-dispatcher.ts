@@ -91,7 +91,10 @@ async function callTool(server, params = {}) {
     const result = await executeMcpHttpTool({ tool: executorTool, authConfig: executorAuth, args });
     const content = [];
     if (result.json !== null) {
-      content.push({ type: 'json', data: result.json });
+      const prettyJson = typeof result.json === 'string'
+        ? result.json
+        : JSON.stringify(result.json, null, 2);
+      content.push({ type: 'text', text: prettyJson });
     } else {
       content.push({ type: 'text', text: result.rawBody || '' });
     }

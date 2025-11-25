@@ -282,9 +282,12 @@ export function createMcpRouter() {
 
             const content = [];
             if (result.json !== null) {
+              const prettyJson = typeof result.json === 'string'
+                ? result.json
+                : JSON.stringify(result.json, null, 2);
               content.push({
-                type: 'json',
-                data: result.json
+                type: 'text',
+                text: prettyJson
               });
             } else {
               content.push({
