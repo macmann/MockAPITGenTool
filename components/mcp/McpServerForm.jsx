@@ -129,7 +129,7 @@ export default function McpServerForm({ projectId, initialServer }) {
             <input
               type="checkbox"
               name="requireApiKey"
-              defaultChecked={initialServer ? initialServer.requireApiKey : true}
+              defaultChecked={initialServer ? initialServer.requireApiKey : false}
             />
             Require x-api-key on MCP calls
           </label>

@@ -150,7 +150,7 @@ export async function POST(req) {
       description: cleanString(body?.description),
       baseUrl: cleanString(body?.baseUrl),
       isEnabled: toBoolean(body?.isEnabled),
-      requireApiKey: toBoolean(body?.requireApiKey ?? true)
+      requireApiKey: toBoolean(body?.requireApiKey ?? false)
     }
   });
 
